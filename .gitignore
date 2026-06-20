@@ -1,0 +1,20 @@
+# Rust dependencies & build artifacts
+contracts/target/
+**/*.rs.bk
+
+# Node / Next.js dependencies & build artifacts
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+frontend/tsconfig.tsbuildinfo
+
+# Local env files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# OS files
+.DS_Store
+Thumbs.db
