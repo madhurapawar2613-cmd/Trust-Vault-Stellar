@@ -1,0 +1,6 @@
+[workspace]
+members = ["escrow", "dispute"]
+resolver = "2"
+
+[workspace.dependencies]
+soroban-sdk = { version = "21.0.0" }
