@@ -2,7 +2,17 @@
 
 > **Decentralized escrow on Stellar Soroban** — milestone-based, dispute-resolved, trustless.
 
-[![CI/CD](https://github.com/yourusername/trustvault/actions/workflows/ci.yml/badge.svg)](https://github.com/yourusername/trustvault/actions/workflows/ci.yml)
+## 🌐 Live Testnet Deployment
+
+| Contract | Address |
+|----------|---------|
+| `escrow` | [`CBSC34HVESNUYHA44L7BPJFFCGJEVDIPW2LUI6UFST7NCOU7PCGJVCDB`](https://stellar.expert/explorer/testnet/contract/CBSC34HVESNUYHA44L7BPJFFCGJEVDIPW2LUI6UFST7NCOU7PCGJVCDB) |
+| `dispute` | [`CD6HNXUQ7OLA742HHYMXN5GEL2ZORLE7STV6UXQK6TCEB2K2ECC2EFN3`](https://stellar.expert/explorer/testnet/contract/CD6HNXUQ7OLA742HHYMXN5GEL2ZORLE7STV6UXQK6TCEB2K2ECC2EFN3) |
+| Admin | `GAU2K5F4X7F72LTSCFWBG6DEXKX3M6KCGFGPHVAH2ASDHN4OGUMM77JY` |
+| Network | Stellar Testnet (`Test SDF Network ; September 2015`) |
+| Deployed | 2026-06-22 |
+
+[![CI/CD](https://github.com/madhurapawar2613-cmd/Trust-Vault-Stellar/actions/workflows/ci.yml/badge.svg)](https://github.com/madhurapawar2613-cmd/Trust-Vault-Stellar/actions/workflows/ci.yml)
 
 ---
 
@@ -110,33 +120,42 @@ cargo test --features testutils -- --nocapture
 
 ### 4. Deploy contracts to testnet
 
-```bash
-# Fund an account on testnet
-stellar keys generate deployer --network testnet
+> **Already deployed!** See the [Live Testnet Deployment](#-live-testnet-deployment) section above for active contract IDs.
 
-# Deploy dispute contract
+```bash
+# Generate & fund a deployer account
+stellar keys generate deployer --network testnet
+stellar keys fund deployer --network testnet
+
+# Optimize WASMs before deploying (strips reference-types for testnet compatibility)
+stellar contract optimize --wasm target/wasm32-unknown-unknown/release/dispute.wasm
+stellar contract optimize --wasm target/wasm32-unknown-unknown/release/escrow.wasm
+
+# Deploy dispute contract FIRST (escrow imports its WASM)
 stellar contract deploy \
-  --wasm target/wasm32-unknown-unknown/release/dispute.wasm \
+  --wasm target/wasm32-unknown-unknown/release/dispute.optimized.wasm \
   --source deployer \
   --network testnet
 
 # Deploy escrow contract
 stellar contract deploy \
-  --wasm target/wasm32-unknown-unknown/release/escrow.wasm \
+  --wasm target/wasm32-unknown-unknown/release/escrow.optimized.wasm \
   --source deployer \
   --network testnet
 
-# Initialize both contracts
+# Initialize both contracts (use --send=yes to force-submit on slow networks)
 stellar contract invoke \
   --id <DISPUTE_CONTRACT_ID> \
   --source deployer \
   --network testnet \
+  --send=yes \
   -- initialize --admin <ADMIN_ADDRESS>
 
 stellar contract invoke \
   --id <ESCROW_CONTRACT_ID> \
   --source deployer \
   --network testnet \
+  --send=yes \
   -- initialize --admin <ADMIN_ADDRESS> --dispute_contract <DISPUTE_CONTRACT_ID>
 ```
 

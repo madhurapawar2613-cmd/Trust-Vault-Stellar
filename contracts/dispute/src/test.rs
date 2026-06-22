@@ -6,7 +6,7 @@ use soroban_sdk::{
     Address, Env, String,
 };
 
-fn setup_dispute_contract(env: &Env) -> (Address, Address, DisputeContractClient) {
+fn setup_dispute_contract(env: &Env) -> (Address, Address, DisputeContractClient<'_>) {
     let admin = Address::generate(env);
     let contract_id = env.register_contract(None, DisputeContract);
     let client = DisputeContractClient::new(env, &contract_id);

@@ -9,6 +9,13 @@ on:
 env:
   CARGO_TERM_COLOR: always
   NODE_VERSION: '20'
+  # Deployed testnet contract IDs (2026-06-22)
+  NEXT_PUBLIC_ESCROW_CONTRACT_ID: 'CBSC34HVESNUYHA44L7BPJFFCGJEVDIPW2LUI6UFST7NCOU7PCGJVCDB'
+  NEXT_PUBLIC_DISPUTE_CONTRACT_ID: 'CD6HNXUQ7OLA742HHYMXN5GEL2ZORLE7STV6UXQK6TCEB2K2ECC2EFN3'
+  NEXT_PUBLIC_NETWORK_PASSPHRASE: 'Test SDF Network ; September 2015'
+  NEXT_PUBLIC_RPC_URL: 'https://soroban-testnet.stellar.org'
+  NEXT_PUBLIC_HORIZON_URL: 'https://horizon-testnet.stellar.org'
+  NEXT_PUBLIC_NATIVE_TOKEN: 'CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYC'
 
 jobs:
   # ────────────────────────────────────────────────────────────────────────────
@@ -39,13 +46,13 @@ jobs:
           restore-keys: |
             cargo-${{ runner.os }}-
 
-      - name: Lint (clippy)
-        working-directory: contracts
-        run: cargo clippy --all-targets --features testutils -- -D warnings
-
       - name: Format check
         working-directory: contracts
         run: cargo fmt --all -- --check
+
+      - name: Lint (clippy)
+        working-directory: contracts
+        run: cargo clippy --all-targets --features testutils -- -D warnings
 
       - name: Run contract tests — dispute
         working-directory: contracts
@@ -58,18 +65,27 @@ jobs:
           cargo build -p dispute --release --target wasm32-unknown-unknown
           cargo test -p escrow --features testutils -- --nocapture
 
-      - name: Build all WASM artifacts
+      - name: Build + optimize WASM artifacts
         working-directory: contracts
         run: |
           cargo build --release --target wasm32-unknown-unknown
-          echo "✅ WASM artifacts built successfully"
+          # Install stellar CLI for WASM optimization
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+          cargo install --locked stellar-cli --features opt
+          stellar contract optimize --wasm target/wasm32-unknown-unknown/release/dispute.wasm
+          stellar contract optimize --wasm target/wasm32-unknown-unknown/release/escrow.wasm
+          echo "✅ WASM artifacts built and optimized"
           ls -lh target/wasm32-unknown-unknown/release/*.wasm
 
       - name: Upload WASM artifacts
         uses: actions/upload-artifact@v4
         with:
           name: wasm-contracts
-          path: contracts/target/wasm32-unknown-unknown/release/*.wasm
+          path: |
+            contracts/target/wasm32-unknown-unknown/release/dispute.wasm
+            contracts/target/wasm32-unknown-unknown/release/dispute.optimized.wasm
+            contracts/target/wasm32-unknown-unknown/release/escrow.wasm
+            contracts/target/wasm32-unknown-unknown/release/escrow.optimized.wasm
           retention-days: 7
 
   # ────────────────────────────────────────────────────────────────────────────
@@ -94,7 +110,7 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --legacy-peer-deps
 
       - name: TypeScript type-check
         run: npm run type-check
@@ -117,12 +133,6 @@ jobs:
 
       - name: Build production bundle
         run: npm run build
-        env:
-          NEXT_PUBLIC_ESCROW_CONTRACT_ID: ${{ secrets.ESCROW_CONTRACT_ID }}
-          NEXT_PUBLIC_DISPUTE_CONTRACT_ID: ${{ secrets.DISPUTE_CONTRACT_ID }}
-          NEXT_PUBLIC_NETWORK_PASSPHRASE: 'Test SDF Network ; September 2015'
-          NEXT_PUBLIC_RPC_URL: 'https://soroban-testnet.stellar.org'
-          NEXT_PUBLIC_HORIZON_URL: 'https://horizon-testnet.stellar.org'
 
   # ────────────────────────────────────────────────────────────────────────────
   # Job 3: Deploy to Vercel (main branch only, after both jobs pass)
@@ -173,11 +183,11 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Cargo audit
-        uses: rustsec/audit-check@v1
+        uses: rustsec/audit-check@v2
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: npm audit
+      - name: npm audit (high severity)
         working-directory: frontend
-        run: npm audit --audit-level=high
+        run: npm audit --audit-level=high --legacy-peer-deps
         continue-on-error: true
