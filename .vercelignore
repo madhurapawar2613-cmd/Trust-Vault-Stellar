@@ -1,0 +1,15 @@
+# Rust contracts
+contracts/
+
+# Next.js build and dependency folders
+frontend/.next/
+frontend/node_modules/
+node_modules/
+
+# Version control
+.git/
+.github/
+.gitignore
+.vercelignore
+README.md
+automate.ps1

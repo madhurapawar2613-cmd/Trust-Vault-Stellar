@@ -18,3 +18,8 @@ frontend/tsconfig.tsbuildinfo
 # OS files
 .DS_Store
 Thumbs.db
+
+# Vercel local cache (keep project.json)
+.vercel/*
+!.vercel/project.json
+
