@@ -113,13 +113,57 @@ export function useWallet() {
     []
   )
 
+  const { isDemoMode, setDemoMode } = useTrustVaultStore()
+
+  const connectDemoWallet = useCallback(() => {
+    setDemoMode(true)
+    setWallet('GAU2K5F4X7F72LTSCFWBG6DEXKX3M6KCGFGPHVAH2ASDHN4OGUMM77JY')
+    
+    // Seed initial mock escrows
+    const mockEscrows = [
+      {
+        id: 1,
+        client: 'GAU2K5F4X7F72LTSCFWBG6DEXKX3M6KCGFGPHVAH2ASDHN4OGUMM77JY',
+        freelancer: 'GB2K5F4X7F72LTSCFWBG6DEXKX3M6KCGFGPHVAH2ASDHN4OGUMM77JY',
+        token: 'CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYC',
+        total_amount: 15000000000n,
+        released_amount: 5000000000n,
+        status: 'Active' as const,
+        dispute_contract: 'CD6HNXUQ7OLA742HHYMXN5GEL2ZORLE7STV6UXQK6TCEB2K2ECC2EFN3',
+        created_at: Math.floor(Date.now() / 1000) - 86400 * 3,
+        milestones: [
+          { id: 0, description: 'UI/UX mockups design', amount: 5000000000n, completed: true, approved: true },
+          { id: 1, description: 'Smart contracts implementation', amount: 5000000000n, completed: true, approved: false },
+          { id: 2, description: 'Frontend integration & testing', amount: 5000000000n, completed: false, approved: false },
+        ]
+      },
+      {
+        id: 2,
+        client: 'GB2K5F4X7F72LTSCFWBG6DEXKX3M6KCGFGPHVAH2ASDHN4OGUMM77JY',
+        freelancer: 'GAU2K5F4X7F72LTSCFWBG6DEXKX3M6KCGFGPHVAH2ASDHN4OGUMM77JY',
+        token: 'CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYC',
+        total_amount: 8000000000n,
+        released_amount: 8000000000n,
+        status: 'Completed' as const,
+        dispute_contract: 'CD6HNXUQ7OLA742HHYMXN5GEL2ZORLE7STV6UXQK6TCEB2K2ECC2EFN3',
+        created_at: Math.floor(Date.now() / 1000) - 86400 * 10,
+        milestones: [
+          { id: 0, description: 'Stellar Soroban integration', amount: 8000000000n, completed: true, approved: true }
+        ]
+      }
+    ]
+    useTrustVaultStore.getState().setEscrows(mockEscrows)
+  }, [setWallet, setDemoMode])
+
   return {
     publicKey,
     isConnected,
     loading,
     error,
     freighterInstalled,
+    isDemoMode,
     connect,
+    connectDemoWallet,
     disconnect,
     signTransaction,
   }

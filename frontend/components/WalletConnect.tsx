@@ -7,7 +7,7 @@ interface Props {
 }
 
 export function WalletConnect({ large }: Props) {
-  const { isConnected, loading, error, connect, disconnect, freighterInstalled } = useWallet()
+  const { isConnected, loading, error, connect, connectDemoWallet, disconnect, freighterInstalled } = useWallet()
 
   if (isConnected) {
     return (
@@ -40,6 +40,19 @@ export function WalletConnect({ large }: Props) {
           <Wallet size={16} />
         )}
         {loading ? 'Connecting...' : 'Connect Freighter'}
+      </button>
+      <button
+        className="btn btn-outline"
+        onClick={connectDemoWallet}
+        style={{
+          fontSize: large ? '0.875rem' : '0.78rem',
+          padding: large ? '0.6rem 1.75rem' : '0.4rem 1rem',
+          gap: '8px',
+          borderColor: 'var(--accent-primary)',
+          color: 'var(--accent-primary)',
+        }}
+      >
+        Use Demo/Mock Wallet
       </button>
       {error && (
         <p style={{ fontSize: '0.78rem', color: 'var(--accent-danger)', maxWidth: '280px', textAlign: 'center' }}>

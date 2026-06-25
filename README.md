@@ -2,13 +2,18 @@
 
 > **Decentralized escrow on Stellar Soroban** — milestone-based, dispute-resolved, trustless.
 
-## 🌐 Live Testnet Deployment
+## 🌐 Live Testnet Deployment & Demo
 
-| Contract | Address |
-|----------|---------|
-| `escrow` | [`CBSC34HVESNUYHA44L7BPJFFCGJEVDIPW2LUI6UFST7NCOU7PCGJVCDB`](https://stellar.expert/explorer/testnet/contract/CBSC34HVESNUYHA44L7BPJFFCGJEVDIPW2LUI6UFST7NCOU7PCGJVCDB) |
-| `dispute` | [`CD6HNXUQ7OLA742HHYMXN5GEL2ZORLE7STV6UXQK6TCEB2K2ECC2EFN3`](https://stellar.expert/explorer/testnet/contract/CD6HNXUQ7OLA742HHYMXN5GEL2ZORLE7STV6UXQK6TCEB2K2ECC2EFN3) |
-| Admin | `GAU2K5F4X7F72LTSCFWBG6DEXKX3M6KCGFGPHVAH2ASDHN4OGUMM77JY` |
+| Item | Value |
+|------|-------|
+| **Live Demo URL** | [trust-vault-stellar.vercel.app](https://trust-vault-stellar.vercel.app) |
+| `escrow` Address | [`CBSC34HVESNUYHA44L7BPJFFCGJEVDIPW2LUI6UFST7NCOU7PCGJVCDB`](https://stellar.expert/explorer/testnet/contract/CBSC34HVESNUYHA44L7BPJFFCGJEVDIPW2LUI6UFST7NCOU7PCGJVCDB) |
+| `dispute` Address | [`CD6HNXUQ7OLA742HHYMXN5GEL2ZORLE7STV6UXQK6TCEB2K2ECC2EFN3`](https://stellar.expert/explorer/testnet/contract/CD6HNXUQ7OLA742HHYMXN5GEL2ZORLE7STV6UXQK6TCEB2K2ECC2EFN3) |
+| Admin Wallet | `GAU2K5F4X7F72LTSCFWBG6DEXKX3M6KCGFGPHVAH2ASDHN4OGUMM77JY` |
+| `escrow` Creation TX | [`153f47e16517a70b5508ef1e7cf644b22a33e1e976ae7330887d6d289e5c9fb0`](https://stellar.expert/explorer/testnet/tx/153f47e16517a70b5508ef1e7cf644b22a33e1e976ae7330887d6d289e5c9fb0) |
+| `escrow` Init TX | [`c797a61102168190175e339507c0e11167ac77f27fea7a6cc6aac6b55ae69350`](https://stellar.expert/explorer/testnet/tx/c797a61102168190175e339507c0e11167ac77f27fea7a6cc6aac6b55ae69350) |
+| `dispute` Creation TX | [`88fa542a9e0e8e58767005fb047a3289b1238e0da629de0f6de81b16d4a6f89e`](https://stellar.expert/explorer/testnet/tx/88fa542a9e0e8e58767005fb047a3289b1238e0da629de0f6de81b16d4a6f89e) |
+| `dispute` Init TX | [`d480c266828d9cf0be19f1740ddd2f34d95a82639f6b446b6d03499dd9e41601`](https://stellar.expert/explorer/testnet/tx/d480c266828d9cf0be19f1740ddd2f34d95a82639f6b446b6d03499dd9e41601) |
 | Network | Stellar Testnet (`Test SDF Network ; September 2015`) |
 | Deployed | 2026-06-22 |
 
@@ -239,18 +244,46 @@ Signature elements:
 
 ---
 
+## 📸 Screenshots & Walkthrough Video
+
+### 🎬 Walkthrough Video (1-2 mins)
+Watch the complete interactive walk-through showing connecting mock wallet, creating a multi-milestone escrow, completing/approving milestones, and raising a dispute.
+
+![dApp Video Walkthrough](assets/demo_walkthrough.webp)
+
+### 📱 Mobile Responsive UI
+Premium, fully responsive design and interactive components optimized for mobile and desktop screens:
+
+![Mobile Responsive UI](assets/mobile_responsive_ui.png)
+
+### 🧪 Passing Test Suites
+35 passing test cases across Rust smart contracts (Soroban SDK test utilities) and frontend React components (Jest & React Testing Library):
+
+![Test Output](assets/test_output.png)
+
+### 🚀 CI/CD Pipeline Running
+Robust 4-job automated CI/CD workflow pipeline passing successfully on GitHub Actions:
+
+![CI/CD Pipeline](assets/cicd_pipeline.png)
+
+---
+
 ## Level 3 Requirements Checklist
 
 - [x] **Inter-contract communication** — `EscrowContract` calls `DisputeContract::register_dispute` directly
 - [x] **Event streaming** — `subscribeToEscrowEvents` polls on-chain events every 5s with live UI updates
 - [x] **CI/CD pipeline** — 4-job GitHub Actions (lint→test→build→deploy)
 - [x] **Mobile-responsive frontend** — Responsive grid, mobile nav, CSS breakpoints
-- [x] **3+ passing tests** — 11 Rust + 19 Jest = **30 total tests**
+- [x] **3+ passing tests** — 11 Rust + 24 Jest = **35 total tests**
 - [x] **Complete documentation** — This README + inline code comments
 - [x] **10+ meaningful commits** — Feature-level commits per contract/component
 - [x] **Two contracts** — `escrow` + `dispute` with defined API surface
 - [x] **Freighter wallet integration** — Full connect/disconnect/sign flow
 - [x] **Testnet deployment ready** — `stellar-cli` deploy commands documented
+- [x] **Live Demo URL** — [trust-vault-stellar.vercel.app](https://trust-vault-stellar.vercel.app)
+- [x] **Transaction hashes** — Contract creation and initialization hashes documented
+- [x] **Screenshots** — Mobile UI, passing tests, and green CI/CD pipeline
+- [x] **Demo video link** — Walkthrough animation included directly in README
 
 ---
 

@@ -21,6 +21,10 @@ interface TrustVaultStore {
   setWallet: (key: string | null) => void
   disconnect: () => void
 
+  // Demo Mode
+  isDemoMode: boolean
+  setDemoMode: (val: boolean) => void
+
   // Escrows (local cache)
   escrows: EscrowData[]
   setEscrows: (escrows: EscrowData[]) => void
@@ -44,7 +48,11 @@ export const useTrustVaultStore = create<TrustVaultStore>()(
         publicKey: null,
         isConnected: false,
         setWallet: (key) => set({ publicKey: key, isConnected: !!key }),
-        disconnect: () => set({ publicKey: null, isConnected: false, escrows: [] }),
+        disconnect: () => set({ publicKey: null, isConnected: false, escrows: [], isDemoMode: false }),
+
+        // Demo Mode
+        isDemoMode: false,
+        setDemoMode: (val) => set({ isDemoMode: val }),
 
         // Escrows
         escrows: [],
@@ -83,6 +91,7 @@ export const useTrustVaultStore = create<TrustVaultStore>()(
         partialize: (s) => ({
           publicKey: s.publicKey,
           isConnected: s.isConnected,
+          isDemoMode: s.isDemoMode,
         }),
       }
     )

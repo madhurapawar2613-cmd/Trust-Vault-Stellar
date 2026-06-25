@@ -11,6 +11,7 @@ import {
   POLL_INTERVAL_MS,
 } from './config'
 import type { EscrowData, MilestoneData } from './stellar'
+import { useTrustVaultStore } from './store'
 
 const server = new StellarSdk.SorobanRpc.Server(RPC_URL, { allowHttp: false })
 
@@ -65,6 +66,11 @@ async function signAndSubmit(
 // ── Read Functions ────────────────────────────────────────────────────────────
 
 export async function getEscrow(escrowId: number): Promise<EscrowData> {
+  if (useTrustVaultStore.getState().isDemoMode) {
+    const escrow = useTrustVaultStore.getState().escrows.find((e) => e.id === escrowId)
+    if (!escrow) throw new Error('Escrow not found')
+    return escrow
+  }
   const contract = escrowContract()
   const account = await server.getAccount(
     // Use a funded testnet account for read-only simulation
@@ -91,6 +97,9 @@ export async function getEscrow(escrowId: number): Promise<EscrowData> {
 }
 
 export async function getEscrowCount(): Promise<number> {
+  if (useTrustVaultStore.getState().isDemoMode) {
+    return useTrustVaultStore.getState().escrows.length
+  }
   const contract = escrowContract()
   const account = await server.getAccount(
     'GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWN'
@@ -141,6 +150,30 @@ export async function createEscrow(params: {
   milestones: Array<{ description: string; amount: string }>
   signTransaction: (xdr: string) => Promise<string>
 }): Promise<string> {
+  if (useTrustVaultStore.getState().isDemoMode) {
+    await new Promise((r) => setTimeout(r, 1500))
+    const id = useTrustVaultStore.getState().escrows.length + 1
+    const newEscrow: EscrowData = {
+      id,
+      client: params.client,
+      freelancer: params.freelancer,
+      token: params.tokenAddress,
+      total_amount: params.milestones.reduce((acc, m) => acc + BigInt(m.amount), 0n),
+      released_amount: 0n,
+      status: 'Active',
+      dispute_contract: DISPUTE_CONTRACT_ID,
+      created_at: Math.floor(Date.now() / 1000),
+      milestones: params.milestones.map((m, i) => ({
+        id: i,
+        description: m.description,
+        amount: BigInt(m.amount),
+        completed: false,
+        approved: false,
+      })),
+    }
+    useTrustVaultStore.getState().upsertEscrow(newEscrow)
+    return '153f47e16517a70b5508ef1e7cf644b22a33e1e976ae7330887d6d289e5c9fb0'
+  }
   const contract = escrowContract()
 
   const milestonesScVal = StellarSdk.nativeToScVal(
@@ -171,6 +204,21 @@ export async function completeMilestone(params: {
   milestoneId: number
   signTransaction: (xdr: string) => Promise<string>
 }): Promise<string> {
+  if (useTrustVaultStore.getState().isDemoMode) {
+    await new Promise((r) => setTimeout(r, 1500))
+    const escrows = useTrustVaultStore.getState().escrows
+    const escrow = escrows.find((e) => e.id === params.escrowId)
+    if (!escrow) throw new Error('Escrow not found')
+    const updatedMilestones = escrow.milestones.map((m) =>
+      m.id === params.milestoneId ? { ...m, completed: true } : m
+    )
+    const updatedEscrow = {
+      ...escrow,
+      milestones: updatedMilestones,
+    }
+    useTrustVaultStore.getState().upsertEscrow(updatedEscrow)
+    return 'c797a61102168190175e339507c0e11167ac77f27fea7a6cc6aac6b55ae69350'
+  }
   const contract = escrowContract()
   const op = contract.call(
     'complete_milestone',
@@ -188,6 +236,31 @@ export async function approveMilestone(params: {
   milestoneId: number
   signTransaction: (xdr: string) => Promise<string>
 }): Promise<string> {
+  if (useTrustVaultStore.getState().isDemoMode) {
+    await new Promise((r) => setTimeout(r, 1500))
+    const escrows = useTrustVaultStore.getState().escrows
+    const escrow = escrows.find((e) => e.id === params.escrowId)
+    if (!escrow) throw new Error('Escrow not found')
+    const milestone = escrow.milestones.find((m) => m.id === params.milestoneId)
+    if (!milestone) throw new Error('Milestone not found')
+    
+    const updatedMilestones = escrow.milestones.map((m) =>
+      m.id === params.milestoneId ? { ...m, approved: true } : m
+    )
+    
+    const released_amount = escrow.released_amount + milestone.amount
+    const allApproved = updatedMilestones.every((m) => m.approved)
+    const status = allApproved ? ('Completed' as const) : escrow.status
+
+    const updatedEscrow = {
+      ...escrow,
+      released_amount,
+      status,
+      milestones: updatedMilestones,
+    }
+    useTrustVaultStore.getState().upsertEscrow(updatedEscrow)
+    return 'd480c266828d9cf0be19f1740ddd2f34d95a82639f6b446b6d03499dd9e41601'
+  }
   const contract = escrowContract()
   const op = contract.call(
     'approve_milestone',
@@ -205,6 +278,18 @@ export async function raiseDispute(params: {
   reason: string
   signTransaction: (xdr: string) => Promise<string>
 }): Promise<string> {
+  if (useTrustVaultStore.getState().isDemoMode) {
+    await new Promise((r) => setTimeout(r, 1500))
+    const escrows = useTrustVaultStore.getState().escrows
+    const escrow = escrows.find((e) => e.id === params.escrowId)
+    if (!escrow) throw new Error('Escrow not found')
+    const updatedEscrow = {
+      ...escrow,
+      status: 'Disputed' as const,
+    }
+    useTrustVaultStore.getState().upsertEscrow(updatedEscrow)
+    return '88fa542a9e0e8e58767005fb047a3289b1238e0da629de0f6de81b16d4a6f89e'
+  }
   const contract = escrowContract()
   const op = contract.call(
     'raise_dispute',
@@ -221,6 +306,18 @@ export async function cancelEscrow(params: {
   escrowId: number
   signTransaction: (xdr: string) => Promise<string>
 }): Promise<string> {
+  if (useTrustVaultStore.getState().isDemoMode) {
+    await new Promise((r) => setTimeout(r, 1500))
+    const escrows = useTrustVaultStore.getState().escrows
+    const escrow = escrows.find((e) => e.id === params.escrowId)
+    if (!escrow) throw new Error('Escrow not found')
+    const updatedEscrow = {
+      ...escrow,
+      status: 'Cancelled' as const,
+    }
+    useTrustVaultStore.getState().upsertEscrow(updatedEscrow)
+    return '88fa542a9e0e8e58767005fb047a3289b1238e0da629de0f6de81b16d4a6f89e'
+  }
   const contract = escrowContract()
   const op = contract.call(
     'cancel_escrow',
