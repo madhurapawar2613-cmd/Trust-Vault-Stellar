@@ -30,6 +30,50 @@ export function useWallet() {
     checkExistingConnection()
   }, [])
 
+  // Auto-detect wallet changes (account switches, networks) in Freighter
+  useEffect(() => {
+    if (!isConnected) return
+    let watcher: any = null
+    let active = true
+
+    async function startWatcher() {
+      const api = await getFreighterAPI()
+      if (!api || !active) return
+      
+      const WatchWalletChangesClass = (api as any).WatchWalletChanges
+      if (!WatchWalletChangesClass) return
+
+      try {
+        watcher = new WatchWalletChangesClass()
+        watcher.watch((changes: any) => {
+          if (!active) return
+          if (changes.error) {
+            console.warn('[TrustVault] Freighter watcher error:', changes.error)
+            return
+          }
+          if (changes.address) {
+            console.log('[TrustVault] Freighter active account changed to:', changes.address)
+            setWallet(changes.address)
+          } else {
+            console.log('[TrustVault] Freighter disconnected')
+            storeDisconnect()
+          }
+        })
+      } catch (e) {
+        console.error('[TrustVault] Failed to initialize Freighter watcher:', e)
+      }
+    }
+
+    startWatcher()
+
+    return () => {
+      active = false
+      if (watcher && typeof watcher.stop === 'function') {
+        watcher.stop()
+      }
+    }
+  }, [isConnected, setWallet, storeDisconnect])
+
   async function checkExistingConnection() {
     const api = await getFreighterAPI()
     if (!api) return
@@ -105,10 +149,24 @@ export function useWallet() {
     async (xdr: string): Promise<string> => {
       const api = await getFreighterAPI()
       if (!api) throw new Error('Freighter not available')
-      const result = await api.signTransaction(xdr, {
-        networkPassphrase: process.env.NEXT_PUBLIC_NETWORK_PASSPHRASE,
+
+      // Freighter v3 returns { signedTxXdr, signerAddress, error }
+      // Older versions return a plain string
+      const result = await (api as any).signTransaction(xdr, {
+        networkPassphrase: 'Test SDF Network ; September 2015',
       })
-      return typeof result === 'string' ? result : (result as any).signedTxXdr
+
+      // Handle error returned inside the result object (Freighter v3 pattern)
+      if (result && typeof result === 'object' && result.error) {
+        throw new Error(`Freighter signing error: ${result.error.message || JSON.stringify(result.error)}`)
+      }
+
+      // Freighter v3 uses signedTxXdr; older versions return a plain string
+      if (typeof result === 'string') return result
+      if (result?.signedTxXdr) return result.signedTxXdr
+      if (result?.signedTransaction) return result.signedTransaction
+
+      throw new Error('Unexpected response from Freighter signTransaction')
     },
     []
   )

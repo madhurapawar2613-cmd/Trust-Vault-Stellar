@@ -31,16 +31,17 @@ async function buildAndSimulate(
 ) {
   const account = await server.getAccount(source)
   const tx = new StellarSdk.TransactionBuilder(account, {
-    fee: '100000',
+    fee: '1000000', // 1 XLM max — Soroban resource fees can be high
     networkPassphrase: NETWORK_PASSPHRASE,
   })
     .addOperation(op)
-    .setTimeout(30)
+    .setTimeout(300) // 5 minutes — enough time to sign in Freighter
     .build()
 
   const simResult = await server.simulateTransaction(tx)
   if (!StellarSdk.SorobanRpc.Api.isSimulationSuccess(simResult)) {
-    const err = (simResult as any)
+    const err = (simResult as StellarSdk.SorobanRpc.Api.SimulateTransactionErrorResponse)
+    console.error('[TrustVault] Simulation failed:', err.error)
     throw new Error(`Simulation failed: ${err.error}`)
   }
   return { tx, simResult }
@@ -50,14 +51,38 @@ async function signAndSubmit(
   tx: StellarSdk.Transaction,
   simResult: StellarSdk.SorobanRpc.Api.SimulateTransactionSuccessResponse,
   signTransaction: (xdr: string) => Promise<string>,
+  signAuthEntry?: (entryXdr: string) => Promise<string>,
 ) {
+  // assembleTransaction adds resource limits + fee bump + auth entries from simulation
   const prepared = StellarSdk.SorobanRpc.assembleTransaction(tx, simResult).build()
+
+  // Debug: log auth entries to understand what needs signing
+  const ops = prepared.operations
+  for (const op of ops) {
+    if (op.type === 'invokeHostFunction') {
+      const invokeOp = op as StellarSdk.Operation.InvokeHostFunction
+      console.log('[TrustVault] Auth entries count:', invokeOp.auth?.length ?? 0)
+      invokeOp.auth?.forEach((authEntry, i) => {
+        const credType = authEntry.credentials().switch().name
+        console.log(`[TrustVault] Auth[${i}] credential type:`, credType)
+      })
+    }
+  }
+
   const signedXdr = await signTransaction(prepared.toEnvelope().toXDR('base64'))
+  if (!signedXdr) {
+    throw new Error('Wallet signing was cancelled or returned empty result')
+  }
+
+  console.log('[TrustVault] Got signed XDR, submitting...')
   const signedTx = StellarSdk.TransactionBuilder.fromXDR(signedXdr, NETWORK_PASSPHRASE)
   const result = await server.sendTransaction(signedTx)
 
+  console.log('[TrustVault] sendTransaction status:', result.status)
   if (result.status === 'ERROR') {
-    throw new Error(`Transaction failed: ${result.errorResult?.toXDR('base64')}`)
+    const errXdr = result.errorResult?.toXDR('base64') ?? 'unknown'
+    console.error('[TrustVault] sendTransaction error XDR:', errXdr)
+    throw new Error(`Transaction failed: ${errXdr}`)
   }
 
   return result.hash
