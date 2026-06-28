@@ -66,7 +66,7 @@ jobs:
           cargo test -p escrow --features testutils -- --nocapture
 
       - name: Install Stellar CLI
-        uses: stellar/stellar-cli@v21.6.0
+        uses: stellar/stellar-cli@v27.0.0
 
       - name: Build + optimize WASM artifacts
         working-directory: contracts

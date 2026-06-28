@@ -12,7 +12,7 @@ The TrustVault protocol is live on the Stellar Testnet. Below are the verified c
 | Item | Value / Location |
 |------|------------------|
 | **Live Demo URL** | [trust-vault-stellar.vercel.app](https://trust-vault-stellar.vercel.app) |
-| **Walkthrough Demo Video** | [Watch on Google Drive](https://drive.google.com/file/d/1y4tud_LFEaDoGERZd_c-4N8n2LLen3MQ/view?usp=drive_link) |
+| **Walkthrough Demo Video** | [Watch on Google Drive](https://drive.google.com/file/d/1R1LIgGm8YmpczZjsisChjlLoxjQZsD6l/view?usp=drive_link) |
 | `escrow` Contract ID | [`CBSC34HVESNUYHA44L7BPJFFCGJEVDIPW2LUI6UFST7NCOU7PCGJVCDB`](https://stellar.expert/explorer/testnet/contract/CBSC34HVESNUYHA44L7BPJFFCGJEVDIPW2LUI6UFST7NCOU7PCGJVCDB) |
 | `dispute` Contract ID | [`CD6HNXUQ7OLA742HHYMXN5GEL2ZORLE7STV6UXQK6TCEB2K2ECC2EFN3`](https://stellar.expert/explorer/testnet/contract/CD6HNXUQ7OLA742HHYMXN5GEL2ZORLE7STV6UXQK6TCEB2K2ECC2EFN3) |
 | Admin / Mediator Wallet | `GAU2K5F4X7F72LTSCFWBG6DEXKX3M6KCGFGPHVAH2ASDHN4OGUMM77JY` |
