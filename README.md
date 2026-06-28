@@ -96,9 +96,6 @@ A comprehensive tour of the user interface across various states of the applicat
 #### 4. Passing Rust & Frontend Test Suites
 ![Test Output](assets/test_output.png)
 
-#### 5. CI/CD Pipeline Running (Passing GitHub Actions)
-![CI/CD Pipeline](assets/cicd_pipeline.png)
-
 ---
 
 ## 🚀 Setup & Installation Guide
