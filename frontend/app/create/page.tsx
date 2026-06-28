@@ -2,10 +2,10 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Plus, Trash2, ArrowRight, ArrowLeft, Loader2, CheckCircle, Lock } from 'lucide-react'
+import { CheckCircle, Plus, Trash2, Lock, Loader2, ArrowRight, ArrowLeft } from 'lucide-react'
 
 import { useWallet } from '@/hooks/useWallet'
-import { createEscrow } from '@/lib/contracts'
+import { createEscrow, waitForConfirmation } from '@/lib/contracts'
 import { isValidStellarAddress, xlmToStroops } from '@/lib/stellar'
 import { useTrustVaultStore } from '@/lib/store'
 import { NATIVE_TOKEN } from '@/lib/config'
@@ -24,6 +24,7 @@ export default function CreateEscrow() {
 
   const [step, setStep] = useState<Step>(1)
   const [loading, setLoading] = useState(false)
+  const [confirming, setConfirming] = useState(false)
   const [txHash, setTxHash] = useState<string | null>(null)
 
   // Form state
@@ -89,12 +90,22 @@ export default function CreateEscrow() {
       })
       setTxHash(hash)
       setPendingTx(hash)
-      addToast({ type: 'success', title: 'Escrow Created!', message: 'Your escrow is now live on-chain.', txHash: hash })
-      setStep(3)
+      setStep(3)          // Show confirming screen immediately
+      setLoading(false)   // Stop the button spinner
+
+      // Wait for the TX to land on-chain BEFORE showing success
+      setConfirming(true)
+      const confirmed = await waitForConfirmation(hash)
+      setConfirming(false)
+
+      if (confirmed) {
+        addToast({ type: 'success', title: 'Escrow Confirmed!', message: 'Your escrow is now live on-chain.', txHash: hash })
+      } else {
+        addToast({ type: 'error', title: 'Confirmation timeout', message: 'TX submitted but not confirmed yet. Check the explorer.' })
+      }
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'Transaction failed'
       addToast({ type: 'error', title: 'Failed to create escrow', message: msg })
-    } finally {
       setLoading(false)
     }
   }
@@ -320,7 +331,7 @@ export default function CreateEscrow() {
           </motion.div>
         )}
 
-        {/* ── Step 3: Success ── */}
+        {/* ── Step 3: Confirming / Success ── */}
         {step === 3 && (
           <motion.div
             key="step3"
@@ -329,48 +340,84 @@ export default function CreateEscrow() {
             className="card"
             style={{ padding: '3rem 2rem', textAlign: 'center' }}
           >
-            <motion.div
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              transition={{ delay: 0.1, type: 'spring', stiffness: 200 }}
-              style={{
-                width: '64px', height: '64px',
-                background: 'rgba(16,185,129,0.12)',
-                borderRadius: '50%',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                margin: '0 auto 1.5rem',
-              }}
-            >
-              <CheckCircle size={32} style={{ color: 'var(--accent-secondary)' }} />
-            </motion.div>
-
-            <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.375rem', fontWeight: 700, marginBottom: '8px' }}>
-              Escrow Created!
-            </h2>
-            <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', marginBottom: '1.5rem' }}>
-              Your funds are now locked on-chain. The freelancer can start working.
-            </p>
-
-            {txHash && (
-              <a
-                href={`https://stellar.expert/explorer/testnet/tx/${txHash}`}
-                target="_blank"
-                rel="noreferrer"
-                style={{ display: 'block', marginBottom: '1.5rem' }}
-              >
-                <div className="address" style={{ padding: '10px', textAlign: 'center', cursor: 'pointer' }}>
-                  {txHash.slice(0, 16)}...{txHash.slice(-12)}
+            {confirming ? (
+              /* ── Confirming state ── */
+              <>
+                <div style={{
+                  width: '64px', height: '64px',
+                  background: 'rgba(99,102,241,0.12)',
+                  borderRadius: '50%',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  margin: '0 auto 1.5rem',
+                }}>
+                  <Loader2 size={32} style={{ color: 'var(--accent-primary)', animation: 'spin 1s linear infinite' }} />
                 </div>
-              </a>
-            )}
+                <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.375rem', fontWeight: 700, marginBottom: '8px' }}>
+                  Confirming on-chain…
+                </h2>
+                <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', marginBottom: '1.5rem' }}>
+                  Transaction submitted. Waiting for Stellar network confirmation (usually 5–10s).
+                </p>
+                {txHash && (
+                  <a
+                    href={`https://stellar.expert/explorer/testnet/tx/${txHash}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    style={{ display: 'block', marginBottom: '1rem' }}
+                  >
+                    <div className="address" style={{ padding: '10px', textAlign: 'center', cursor: 'pointer' }}>
+                      {txHash.slice(0, 16)}…{txHash.slice(-12)}
+                    </div>
+                  </a>
+                )}
+              </>
+            ) : (
+              /* ── Confirmed state ── */
+              <>
+                <motion.div
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ delay: 0.1, type: 'spring', stiffness: 200 }}
+                  style={{
+                    width: '64px', height: '64px',
+                    background: 'rgba(16,185,129,0.12)',
+                    borderRadius: '50%',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    margin: '0 auto 1.5rem',
+                  }}
+                >
+                  <CheckCircle size={32} style={{ color: 'var(--accent-secondary)' }} />
+                </motion.div>
 
-            <button
-              className="btn btn-primary"
-              style={{ width: '100%', justifyContent: 'center' }}
-              onClick={() => router.push('/')}
-            >
-              View Dashboard
-            </button>
+                <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.375rem', fontWeight: 700, marginBottom: '8px' }}>
+                  Escrow Confirmed!
+                </h2>
+                <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', marginBottom: '1.5rem' }}>
+                  Your funds are now locked on-chain. The freelancer can start working.
+                </p>
+
+                {txHash && (
+                  <a
+                    href={`https://stellar.expert/explorer/testnet/tx/${txHash}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    style={{ display: 'block', marginBottom: '1.5rem' }}
+                  >
+                    <div className="address" style={{ padding: '10px', textAlign: 'center', cursor: 'pointer' }}>
+                      {txHash.slice(0, 16)}…{txHash.slice(-12)}
+                    </div>
+                  </a>
+                )}
+
+                <button
+                  className="btn btn-primary"
+                  style={{ width: '100%', justifyContent: 'center' }}
+                  onClick={() => router.push('/')}
+                >
+                  View Dashboard <ArrowRight size={15} />
+                </button>
+              </>
+            )}
           </motion.div>
         )}
       </AnimatePresence>

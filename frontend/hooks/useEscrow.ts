@@ -13,17 +13,22 @@ export function useEscrows(publicKey: string | null) {
     if (!publicKey) return
     setLoading(true)
     setError(null)
+    // Normalize to uppercase for case-insensitive comparison with contract data
+    const normalizedKey = publicKey.toUpperCase()
     try {
       const count = await getEscrowCount()
       const fetched: EscrowData[] = []
       for (let i = 1; i <= count; i++) {
         try {
           const e = await getEscrow(i)
-          // Filter to user's escrows
-          if (e.client === publicKey || e.freelancer === publicKey) {
+          // Normalize both sides before comparing
+          if (
+            e.client.toUpperCase() === normalizedKey ||
+            e.freelancer.toUpperCase() === normalizedKey
+          ) {
             fetched.push(e)
           }
-        } catch { /* skip missing */ }
+        } catch { /* skip missing IDs */ }
       }
       setEscrows(fetched)
     } catch (e: unknown) {
@@ -33,8 +38,18 @@ export function useEscrows(publicKey: string | null) {
     }
   }, [publicKey, setEscrows])
 
+  // Fetch on mount and whenever publicKey changes
   useEffect(() => {
     fetchAll()
+  }, [fetchAll])
+
+  // Auto-refetch when user returns to the tab (e.g. after signing in Freighter)
+  useEffect(() => {
+    function handleVisibility() {
+      if (document.visibilityState === 'visible') fetchAll()
+    }
+    document.addEventListener('visibilitychange', handleVisibility)
+    return () => document.removeEventListener('visibilitychange', handleVisibility)
   }, [fetchAll])
 
   return { escrows, loading, error, refetch: fetchAll, upsertEscrow }
