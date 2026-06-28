@@ -50,6 +50,10 @@ jobs:
         working-directory: contracts
         run: cargo fmt --all -- --check
 
+      - name: Build dispute WASM (required for escrow import)
+        working-directory: contracts
+        run: cargo build -p dispute --release --target wasm32-unknown-unknown
+
       - name: Lint (clippy)
         working-directory: contracts
         run: cargo clippy --all-targets --features testutils -- -D warnings
@@ -186,6 +190,7 @@ jobs:
         uses: rustsec/audit-check@v2
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
+        working-directory: contracts
 
       - name: npm audit (high severity)
         working-directory: frontend
