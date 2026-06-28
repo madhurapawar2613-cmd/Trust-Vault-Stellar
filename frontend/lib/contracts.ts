@@ -141,33 +141,14 @@ export async function createEscrow(params: {
   tokenAddress: string
   milestones: Array<{ description: string; amount: string }>
   signTransaction: (xdr: string) => Promise<string>
-  onApproveStart?: () => void
-  onCreateStart?: () => void
 }): Promise<string> {
   const contract = escrowContract()
 
-  // Calculate total amount for token approval
-  const totalAmount = params.milestones.reduce((sum, m) => sum + BigInt(m.amount), 0n)
-
-  // ── Step 1: Approve token transfer ──────────────────────────────────────
-  // The escrow contract calls token.transfer() from the client, which requires
-  // the client to have pre-approved the escrow contract as a spender.
-  params.onApproveStart?.()
-  const tokenContract = new StellarSdk.Contract(params.tokenAddress)
-  // Ledger expiry: ~7 days at 5s/ledger = 120,960 ledgers
-  const expireLedger = (await server.getLatestLedger()).sequence + 120_960
-  const approveOp = tokenContract.call(
-    'approve',
-    StellarSdk.nativeToScVal(params.client, { type: 'address' }),
-    StellarSdk.nativeToScVal(ESCROW_CONTRACT_ID, { type: 'address' }),
-    StellarSdk.nativeToScVal(totalAmount, { type: 'i128' }),
-    StellarSdk.nativeToScVal(expireLedger, { type: 'u32' }),
-  )
-  const { tx: approveTx, simResult: approveSim } = await buildAndSimulate(params.client, approveOp)
-  await signAndSubmit(approveTx, approveSim, params.signTransaction)
-
-  // ── Step 2: Create the escrow ────────────────────────────────────────────
-  params.onCreateStart?.()
+  // The escrow contract calls token.transfer(client → contract, amount).
+  // Soroban's simulateTransaction automatically builds the full auth tree
+  // for nested calls (including token.transfer), so NO separate approve()
+  // transaction is needed. assembleTransaction embeds all auth entries and
+  // Freighter signs them in one shot.
   const milestonesScVal = StellarSdk.xdr.ScVal.scvVec(
     params.milestones.map((m, i) => {
       // Struct fields must be sorted alphabetically for Soroban serialization:
