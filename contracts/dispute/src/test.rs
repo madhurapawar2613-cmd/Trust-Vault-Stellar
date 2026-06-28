@@ -1,10 +1,7 @@
 #![cfg(test)]
 
 use super::*;
-use soroban_sdk::{
-    testutils::Address as _,
-    Address, Env, String,
-};
+use soroban_sdk::{testutils::Address as _, Address, Env, String};
 
 fn setup_dispute_contract(env: &Env) -> (Address, Address, DisputeContractClient<'_>) {
     let admin = Address::generate(env);
@@ -42,7 +39,11 @@ fn test_resolve_dispute_favor_client() {
     let (admin, _contract_id, client) = setup_dispute_contract(&env);
 
     let raiser = Address::generate(&env);
-    client.register_dispute(&2u32, &raiser, &String::from_str(&env, "Unsatisfactory work"));
+    client.register_dispute(
+        &2u32,
+        &raiser,
+        &String::from_str(&env, "Unsatisfactory work"),
+    );
 
     client.resolve_dispute(&admin, &2u32, &true);
 
@@ -59,7 +60,11 @@ fn test_resolve_dispute_favor_freelancer() {
     let (admin, _contract_id, client) = setup_dispute_contract(&env);
 
     let raiser = Address::generate(&env);
-    client.register_dispute(&3u32, &raiser, &String::from_str(&env, "Client unresponsive"));
+    client.register_dispute(
+        &3u32,
+        &raiser,
+        &String::from_str(&env, "Client unresponsive"),
+    );
 
     client.resolve_dispute(&admin, &3u32, &false);
 
@@ -76,7 +81,11 @@ fn test_withdraw_dispute() {
     let (_admin, _contract_id, client) = setup_dispute_contract(&env);
 
     let raiser = Address::generate(&env);
-    client.register_dispute(&4u32, &raiser, &String::from_str(&env, "Misunderstanding resolved"));
+    client.register_dispute(
+        &4u32,
+        &raiser,
+        &String::from_str(&env, "Misunderstanding resolved"),
+    );
 
     client.withdraw_dispute(&raiser, &4u32);
 

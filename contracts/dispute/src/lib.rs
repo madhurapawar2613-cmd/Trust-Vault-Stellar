@@ -1,8 +1,5 @@
 #![no_std]
-use soroban_sdk::{
-    contract, contractimpl, contracttype,
-    Address, Env, String, symbol_short,
-};
+use soroban_sdk::{contract, contractimpl, contracttype, symbol_short, Address, Env, String};
 
 // ── Data Types ──────────────────────────────────────────────────────────────
 
@@ -41,7 +38,6 @@ pub struct DisputeContract;
 
 #[contractimpl]
 impl DisputeContract {
-
     /// Initialize with an admin address
     pub fn initialize(env: Env, admin: Address) {
         if env.storage().instance().has(&DataKey::Admin) {
@@ -68,14 +64,22 @@ impl DisputeContract {
             resolved_at: 0,
         };
 
-        env.storage().persistent().set(&DataKey::Dispute(escrow_id), &dispute);
-        env.storage().persistent().extend_ttl(&DataKey::Dispute(escrow_id), 100_000, 100_000);
+        env.storage()
+            .persistent()
+            .set(&DataKey::Dispute(escrow_id), &dispute);
+        env.storage()
+            .persistent()
+            .extend_ttl(&DataKey::Dispute(escrow_id), 100_000, 100_000);
 
         // Update count
-        let count: u32 = env.storage().instance()
+        let count: u32 = env
+            .storage()
+            .instance()
             .get(&DataKey::DisputeCount)
             .unwrap_or(0);
-        env.storage().instance().set(&DataKey::DisputeCount, &(count + 1));
+        env.storage()
+            .instance()
+            .set(&DataKey::DisputeCount, &(count + 1));
         env.storage().instance().extend_ttl(10_000, 10_000);
 
         // Emit event
@@ -84,22 +88,21 @@ impl DisputeContract {
     }
 
     /// Admin resolves a dispute in favor of either client or freelancer.
-    pub fn resolve_dispute(
-        env: Env,
-        admin: Address,
-        escrow_id: u32,
-        favor_client: bool,
-    ) {
+    pub fn resolve_dispute(env: Env, admin: Address, escrow_id: u32, favor_client: bool) {
         admin.require_auth();
 
-        let admin_stored: Address = env.storage().instance()
+        let admin_stored: Address = env
+            .storage()
+            .instance()
             .get(&DataKey::Admin)
             .expect("Not initialized");
         if admin != admin_stored {
             panic!("Not admin");
         }
 
-        let mut dispute: Dispute = env.storage().persistent()
+        let mut dispute: Dispute = env
+            .storage()
+            .persistent()
             .get(&DataKey::Dispute(escrow_id))
             .expect("Dispute not found");
 
@@ -114,11 +117,19 @@ impl DisputeContract {
         };
         dispute.resolved_at = env.ledger().timestamp();
 
-        env.storage().persistent().set(&DataKey::Dispute(escrow_id), &dispute);
-        env.storage().persistent().extend_ttl(&DataKey::Dispute(escrow_id), 100_000, 100_000);
+        env.storage()
+            .persistent()
+            .set(&DataKey::Dispute(escrow_id), &dispute);
+        env.storage()
+            .persistent()
+            .extend_ttl(&DataKey::Dispute(escrow_id), 100_000, 100_000);
 
         // Emit resolution event
-        let resolution = if favor_client { symbol_short!("CLIENT") } else { symbol_short!("FREELNCR") };
+        let resolution = if favor_client {
+            symbol_short!("CLIENT")
+        } else {
+            symbol_short!("FREELNCR")
+        };
         let topics = (symbol_short!("RESOLVED"), escrow_id);
         env.events().publish(topics, resolution);
     }
@@ -127,7 +138,9 @@ impl DisputeContract {
     pub fn withdraw_dispute(env: Env, caller: Address, escrow_id: u32) {
         caller.require_auth();
 
-        let mut dispute: Dispute = env.storage().persistent()
+        let mut dispute: Dispute = env
+            .storage()
+            .persistent()
             .get(&DataKey::Dispute(escrow_id))
             .expect("Dispute not found");
 
@@ -140,8 +153,12 @@ impl DisputeContract {
 
         dispute.status = DisputeStatus::Withdrawn;
         dispute.resolved_at = env.ledger().timestamp();
-        env.storage().persistent().set(&DataKey::Dispute(escrow_id), &dispute);
-        env.storage().persistent().extend_ttl(&DataKey::Dispute(escrow_id), 100_000, 100_000);
+        env.storage()
+            .persistent()
+            .set(&DataKey::Dispute(escrow_id), &dispute);
+        env.storage()
+            .persistent()
+            .extend_ttl(&DataKey::Dispute(escrow_id), 100_000, 100_000);
 
         let topics = (symbol_short!("WITHDREW"), escrow_id);
         env.events().publish(topics, caller);
@@ -149,25 +166,27 @@ impl DisputeContract {
 
     /// Get dispute details (read-only)
     pub fn get_dispute(env: Env, escrow_id: u32) -> Dispute {
-        env.storage().persistent()
+        env.storage()
+            .persistent()
             .get(&DataKey::Dispute(escrow_id))
             .expect("Dispute not found")
     }
 
     /// Get total dispute count
     pub fn get_count(env: Env) -> u32 {
-        env.storage().instance()
+        env.storage()
+            .instance()
             .get(&DataKey::DisputeCount)
             .unwrap_or(0)
     }
 
     /// Get admin address
     pub fn get_admin(env: Env) -> Address {
-        env.storage().instance()
+        env.storage()
+            .instance()
             .get(&DataKey::Admin)
             .expect("Not initialized")
     }
 }
 
 mod test;
-

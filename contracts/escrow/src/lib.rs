@@ -1,7 +1,6 @@
 #![no_std]
 use soroban_sdk::{
-    contract, contractimpl, contracttype,
-    Address, Env, String, Vec, token, symbol_short,
+    contract, contractimpl, contracttype, symbol_short, token, Address, Env, String, Vec,
 };
 
 // ── Data Types ──────────────────────────────────────────────────────────────
@@ -50,9 +49,16 @@ pub enum DataKey {
 
 // ── Events ───────────────────────────────────────────────────────────────────
 
-fn emit_escrow_created(env: &Env, escrow_id: u32, client: &Address, freelancer: &Address, amount: i128) {
+fn emit_escrow_created(
+    env: &Env,
+    escrow_id: u32,
+    client: &Address,
+    freelancer: &Address,
+    amount: i128,
+) {
     let topics = (symbol_short!("CREATED"), escrow_id);
-    env.events().publish(topics, (client.clone(), freelancer.clone(), amount));
+    env.events()
+        .publish(topics, (client.clone(), freelancer.clone(), amount));
 }
 
 fn emit_milestone_completed(env: &Env, escrow_id: u32, milestone_id: u32, amount: i128) {
@@ -81,9 +87,7 @@ fn emit_escrow_cancelled(env: &Env, escrow_id: u32, to: &Address, amount: i128) 
 // registered directly in the test environment.
 
 pub mod dispute_contract {
-    soroban_sdk::contractimport!(
-        file = "../target/wasm32-unknown-unknown/release/dispute.wasm"
-    );
+    soroban_sdk::contractimport!(file = "../target/wasm32-unknown-unknown/release/dispute.wasm");
 }
 
 // ── Contract ─────────────────────────────────────────────────────────────────
@@ -93,7 +97,6 @@ pub struct EscrowContract;
 
 #[contractimpl]
 impl EscrowContract {
-
     /// Initialize the contract with an admin and dispute contract address
     pub fn initialize(env: Env, admin: Address, dispute_contract: Address) {
         if env.storage().instance().has(&DataKey::Admin) {
@@ -101,7 +104,9 @@ impl EscrowContract {
         }
         admin.require_auth();
         env.storage().instance().set(&DataKey::Admin, &admin);
-        env.storage().instance().set(&DataKey::DisputeContract, &dispute_contract);
+        env.storage()
+            .instance()
+            .set(&DataKey::DisputeContract, &dispute_contract);
         env.storage().instance().set(&DataKey::EscrowCount, &0u32);
         env.storage().instance().extend_ttl(10_000, 10_000);
     }
@@ -116,7 +121,7 @@ impl EscrowContract {
     ) -> u32 {
         client.require_auth();
 
-        if milestones.len() == 0 {
+        if milestones.is_empty() {
             panic!("Must have at least one milestone");
         }
 
@@ -129,11 +134,15 @@ impl EscrowContract {
         let token_client = token::Client::new(&env, &token);
         token_client.transfer(&client, &env.current_contract_address(), &total_amount);
 
-        let dispute_contract: Address = env.storage().instance()
+        let dispute_contract: Address = env
+            .storage()
+            .instance()
             .get(&DataKey::DisputeContract)
             .unwrap();
 
-        let count: u32 = env.storage().instance()
+        let count: u32 = env
+            .storage()
+            .instance()
             .get(&DataKey::EscrowCount)
             .unwrap_or(0);
         let escrow_id = count + 1;
@@ -151,9 +160,15 @@ impl EscrowContract {
             created_at: env.ledger().timestamp(),
         };
 
-        env.storage().persistent().set(&DataKey::Escrow(escrow_id), &escrow);
-        env.storage().persistent().extend_ttl(&DataKey::Escrow(escrow_id), 100_000, 100_000);
-        env.storage().instance().set(&DataKey::EscrowCount, &escrow_id);
+        env.storage()
+            .persistent()
+            .set(&DataKey::Escrow(escrow_id), &escrow);
+        env.storage()
+            .persistent()
+            .extend_ttl(&DataKey::Escrow(escrow_id), 100_000, 100_000);
+        env.storage()
+            .instance()
+            .set(&DataKey::EscrowCount, &escrow_id);
         env.storage().instance().extend_ttl(10_000, 10_000);
 
         emit_escrow_created(&env, escrow_id, &client, &freelancer, total_amount);
@@ -165,7 +180,9 @@ impl EscrowContract {
     pub fn complete_milestone(env: Env, freelancer: Address, escrow_id: u32, milestone_id: u32) {
         freelancer.require_auth();
 
-        let mut escrow: Escrow = env.storage().persistent()
+        let mut escrow: Escrow = env
+            .storage()
+            .persistent()
             .get(&DataKey::Escrow(escrow_id))
             .expect("Escrow not found");
 
@@ -186,8 +203,12 @@ impl EscrowContract {
         milestones.set(milestone_id, updated.clone());
         escrow.milestones = milestones;
 
-        env.storage().persistent().set(&DataKey::Escrow(escrow_id), &escrow);
-        env.storage().persistent().extend_ttl(&DataKey::Escrow(escrow_id), 100_000, 100_000);
+        env.storage()
+            .persistent()
+            .set(&DataKey::Escrow(escrow_id), &escrow);
+        env.storage()
+            .persistent()
+            .extend_ttl(&DataKey::Escrow(escrow_id), 100_000, 100_000);
         emit_milestone_completed(&env, escrow_id, milestone_id, updated.amount);
     }
 
@@ -195,7 +216,9 @@ impl EscrowContract {
     pub fn approve_milestone(env: Env, client: Address, escrow_id: u32, milestone_id: u32) {
         client.require_auth();
 
-        let mut escrow: Escrow = env.storage().persistent()
+        let mut escrow: Escrow = env
+            .storage()
+            .persistent()
             .get(&DataKey::Escrow(escrow_id))
             .expect("Escrow not found");
 
@@ -234,15 +257,21 @@ impl EscrowContract {
         }
 
         emit_funds_released(&env, escrow_id, &escrow.freelancer, amount);
-        env.storage().persistent().set(&DataKey::Escrow(escrow_id), &escrow);
-        env.storage().persistent().extend_ttl(&DataKey::Escrow(escrow_id), 100_000, 100_000);
+        env.storage()
+            .persistent()
+            .set(&DataKey::Escrow(escrow_id), &escrow);
+        env.storage()
+            .persistent()
+            .extend_ttl(&DataKey::Escrow(escrow_id), 100_000, 100_000);
     }
 
     /// Raise a dispute — calls into DisputeContract (inter-contract communication)
     pub fn raise_dispute(env: Env, caller: Address, escrow_id: u32, reason: String) {
         caller.require_auth();
 
-        let mut escrow: Escrow = env.storage().persistent()
+        let mut escrow: Escrow = env
+            .storage()
+            .persistent()
             .get(&DataKey::Escrow(escrow_id))
             .expect("Escrow not found");
 
@@ -254,8 +283,12 @@ impl EscrowContract {
         }
 
         escrow.status = EscrowStatus::Disputed;
-        env.storage().persistent().set(&DataKey::Escrow(escrow_id), &escrow);
-        env.storage().persistent().extend_ttl(&DataKey::Escrow(escrow_id), 100_000, 100_000);
+        env.storage()
+            .persistent()
+            .set(&DataKey::Escrow(escrow_id), &escrow);
+        env.storage()
+            .persistent()
+            .extend_ttl(&DataKey::Escrow(escrow_id), 100_000, 100_000);
 
         // ── Inter-contract call ───────────────────────────────────────────────
         let dispute_client = dispute_contract::Client::new(&env, &escrow.dispute_contract);
@@ -268,7 +301,9 @@ impl EscrowContract {
     pub fn cancel_escrow(env: Env, client: Address, escrow_id: u32) {
         client.require_auth();
 
-        let mut escrow: Escrow = env.storage().persistent()
+        let mut escrow: Escrow = env
+            .storage()
+            .persistent()
             .get(&DataKey::Escrow(escrow_id))
             .expect("Escrow not found");
 
@@ -288,29 +323,36 @@ impl EscrowContract {
         token_client.transfer(&env.current_contract_address(), &client, &refund_amount);
 
         escrow.status = EscrowStatus::Cancelled;
-        env.storage().persistent().set(&DataKey::Escrow(escrow_id), &escrow);
-        env.storage().persistent().extend_ttl(&DataKey::Escrow(escrow_id), 100_000, 100_000);
+        env.storage()
+            .persistent()
+            .set(&DataKey::Escrow(escrow_id), &escrow);
+        env.storage()
+            .persistent()
+            .extend_ttl(&DataKey::Escrow(escrow_id), 100_000, 100_000);
 
         emit_escrow_cancelled(&env, escrow_id, &client, refund_amount);
     }
 
     /// View escrow details (read-only simulation)
     pub fn get_escrow(env: Env, escrow_id: u32) -> Escrow {
-        env.storage().persistent()
+        env.storage()
+            .persistent()
             .get(&DataKey::Escrow(escrow_id))
             .expect("Escrow not found")
     }
 
     /// Get total number of escrows created
     pub fn get_count(env: Env) -> u32 {
-        env.storage().instance()
+        env.storage()
+            .instance()
             .get(&DataKey::EscrowCount)
             .unwrap_or(0)
     }
 
     /// Get admin address
     pub fn get_admin(env: Env) -> Address {
-        env.storage().instance()
+        env.storage()
+            .instance()
             .get(&DataKey::Admin)
             .expect("Not initialized")
     }
