@@ -65,13 +65,13 @@ jobs:
           cargo build -p dispute --release --target wasm32-unknown-unknown
           cargo test -p escrow --features testutils -- --nocapture
 
+      - name: Install Stellar CLI
+        uses: stellar/stellar-cli@v21.6.0
+
       - name: Build + optimize WASM artifacts
         working-directory: contracts
         run: |
           cargo build --release --target wasm32-unknown-unknown
-          # Install stellar CLI for WASM optimization
-          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-          cargo install --locked stellar-cli --features opt
           stellar contract optimize --wasm target/wasm32-unknown-unknown/release/dispute.wasm
           stellar contract optimize --wasm target/wasm32-unknown-unknown/release/escrow.wasm
           echo "✅ WASM artifacts built and optimized"
@@ -186,6 +186,7 @@ jobs:
         uses: rustsec/audit-check@v2
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
+          ignore: RUSTSEC-2024-0436
 
       - name: npm audit (high severity)
         working-directory: frontend

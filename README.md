@@ -288,15 +288,37 @@ Robust 4-job automated CI/CD workflow pipeline passing successfully on GitHub Ac
 - [x] **CI/CD pipeline** — 4-job GitHub Actions (lint→test→build→deploy)
 - [x] **Mobile-responsive frontend** — Responsive grid, mobile nav, CSS breakpoints
 - [x] **3+ passing tests** — 11 Rust + 24 Jest = **35 total tests**
-- [x] **Complete documentation** — This README + inline code comments
+- [x] **Complete documentation** — Detailed README + Engineering Log + inline code comments
 - [x] **10+ meaningful commits** — Feature-level commits per contract/component
 - [x] **Two contracts** — `escrow` + `dispute` with defined API surface
 - [x] **Freighter wallet integration** — Full connect/disconnect/sign flow
 - [x] **Testnet deployment ready** — `stellar-cli` deploy commands documented
 - [x] **Live Demo URL** — [trust-vault-stellar.vercel.app](https://trust-vault-stellar.vercel.app)
 - [x] **Transaction hashes** — Contract creation and initialization hashes documented
-- [x] **Screenshots** — Mobile UI, passing tests, and green CI/CD pipeline
-- [x] **Demo video link** — Walkthrough animation included directly in README
+- [x] **Screenshots** — Mobile UI, desktop layouts, passing tests, and green CI/CD pipeline
+- [x] **Demo video link** — Walkthrough video included directly in README summary table
+
+---
+
+## 🔧 Engineering & Bug Fix Log
+
+During testing and deployment, several technical hurdles were resolved to ensure production readiness:
+
+### 1. Single-Transaction Soroban Auth Tree (Fixing `txBadAuth`)
+* **Problem**: Initially implemented a two-step escrow creation flow: 1) SAC `approve` token transfer, 2) `create_escrow` contract call. This caused race conditions where the second transaction was simulated while the first was still pending, causing sequence number conflicts. Furthermore, the escrow contract uses a direct `token.transfer` from the client instead of `transfer_from` (meaning the contract itself moves client funds, authorized by client's signature tree), so `approve` was the wrong pattern.
+* **Solution**: Removed the manual `approve` step. Soroban's `simulateTransaction` automatically detects nested calls (like the contract initiating `token.transfer` on behalf of the client) and builds a nested authentication tree. `assembleTransaction` embeds these auth entries, allowing Freighter to authorize the entire transaction, including the token movement, in a **single signature**.
+
+### 2. Auto-Detecting Wallet Account Swaps (Freighter Synchronization)
+* **Problem**: When a user switched accounts within the Freighter extension, the React state remained on the previous key. This caused the transaction to be simulated and built with Account A's sequence number but signed by Account B, returning `txBadAuth` (-6).
+* **Solution**: Integrated Freighter's native `WatchWalletChanges` listener into the `useWallet` hook. The client app now listens to extension events in real time and automatically updates active public keys and builds new transactions cleanly under the correct active key.
+
+### 3. Read-Only Fallback Key Typo & Serialization Normalization
+* **Problem**: `getEscrow` and `getDispute` simulations used a 55-character hardcoded fallback address (`GAAZI...`) instead of the required 56-character length. This threw `invalid encoded string` exceptions which were silently caught, resulting in an empty dashboard. Also, `scValToNative` returns Soroban enums as arrays (e.g., `["Active"]`) and large integers (u64, i128) as strings, causing type mismatches on the client.
+* **Solution**: Corrected the fallback key to the active 56-character deployer key (`GAU2...`) and normalized parsed `ScVal` return payloads into valid JS types (`BigInt` / `Number` properties, flattened status strings).
+
+### 4. Client Webpack Native Addon resolution
+* **Problem**: Browser builds crashed with `TypeError: Cannot read properties of undefined (reading 'call')` in Webpack when pages imported `@stellar/stellar-sdk` because Webpack tried to bundle Node native modules (`sodium-native`, `require-addon`).
+* **Solution**: Added configuration to `next.config.js` to alias browser-incompatible packages to `false` (e.g. `'sodium-native': false`), instructing Webpack to mock them out safely in client bundles.
 
 ---
 
