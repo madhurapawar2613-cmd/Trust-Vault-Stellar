@@ -255,13 +255,19 @@ Watch the complete interactive walk-through showing connecting Freighter wallet,
 ### 📱 Mobile Responsive UI
 Premium, fully responsive design and interactive components optimized for mobile and desktop screens:
 
-![Mobile Responsive UI](assets/mobile_responsive_ui.png)
+![Mobile Responsive Landing Page](assets/mobile_responsive_ui.png)
 
-### 🔐 Interactive Escrow Lifecycle
-Visual walkthrough of creating a multi-milestone escrow and raising an active dispute:
+### 💻 Desktop Layouts & Interactive Escrow Lifecycle
+A comprehensive tour of the user interface across various states of the application:
 
-![Escrow Created Success](assets/escrow_created_success.png)
-![Dispute Raised Details](assets/dispute_raised_success.png)
+#### 1. Public Landing Page (Disconnected)
+![Public Landing Page](assets/landing_page.png)
+
+#### 2. Connected User Dashboard (Active Escrows & Stats)
+![Connected User Dashboard](assets/connected_dashboard.png)
+
+#### 3. Interactive Escrow Details (Milestones & Statuses)
+![Interactive Escrow Details](assets/escrow_details.png)
 
 ### 🧪 Passing Test Suites
 35 passing test cases across Rust smart contracts (Soroban SDK test utilities) and frontend React components (Jest & React Testing Library):
