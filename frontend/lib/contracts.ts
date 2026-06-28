@@ -93,8 +93,7 @@ async function signAndSubmit(
 export async function getEscrow(escrowId: number): Promise<EscrowData> {
   const contract = escrowContract()
   const account = await server.getAccount(
-    // Use a funded testnet account for read-only simulation
-    'GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWN'
+    'GAU2K5F4X7F72LTSCFWBG6DEXKX3M6KCGFGPHVAH2ASDHN4OGUMM77JY'
   )
   const tx = new StellarSdk.TransactionBuilder(account, {
     fee: '100',
@@ -113,13 +112,29 @@ export async function getEscrow(escrowId: number): Promise<EscrowData> {
   if (!StellarSdk.SorobanRpc.Api.isSimulationSuccess(result)) {
     throw new Error('Failed to fetch escrow')
   }
-  return StellarSdk.scValToNative(result.result!.retval) as EscrowData
+
+  const raw = StellarSdk.scValToNative(result.result!.retval)
+  return {
+    ...raw,
+    id: Number(raw.id),
+    created_at: Number(raw.created_at),
+    released_amount: BigInt(raw.released_amount || 0),
+    total_amount: BigInt(raw.total_amount || 0),
+    status: Array.isArray(raw.status) ? raw.status[0] : raw.status,
+    milestones: (raw.milestones || []).map((m: any) => ({
+      ...m,
+      id: Number(m.id),
+      amount: BigInt(m.amount || 0),
+      completed: !!m.completed,
+      approved: !!m.approved,
+    })),
+  } as EscrowData
 }
 
 export async function getEscrowCount(): Promise<number> {
   const contract = escrowContract()
   const account = await server.getAccount(
-    'GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWN'
+    'GAU2K5F4X7F72LTSCFWBG6DEXKX3M6KCGFGPHVAH2ASDHN4OGUMM77JY'
   )
   const tx = new StellarSdk.TransactionBuilder(account, {
     fee: '100',
@@ -139,7 +154,7 @@ export async function getEscrowCount(): Promise<number> {
 export async function getDispute(escrowId: number) {
   const contract = disputeContract()
   const account = await server.getAccount(
-    'GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWN'
+    'GAU2K5F4X7F72LTSCFWBG6DEXKX3M6KCGFGPHVAH2ASDHN4OGUMM77JY'
   )
   const tx = new StellarSdk.TransactionBuilder(account, {
     fee: '100',
@@ -155,7 +170,15 @@ export async function getDispute(escrowId: number) {
   if (!StellarSdk.SorobanRpc.Api.isSimulationSuccess(result)) {
     return null
   }
-  return StellarSdk.scValToNative(result.result!.retval)
+  
+  const raw = StellarSdk.scValToNative(result.result!.retval)
+  return {
+    ...raw,
+    escrow_id: Number(raw.escrow_id),
+    created_at: Number(raw.created_at),
+    resolved_at: Number(raw.resolved_at),
+    status: Array.isArray(raw.status) ? raw.status[0] : raw.status,
+  }
 }
 
 // ── Write Functions ───────────────────────────────────────────────────────────
