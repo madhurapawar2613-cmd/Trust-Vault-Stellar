@@ -7,6 +7,7 @@
 | Item | Value |
 |------|-------|
 | **Live Demo URL** | [trust-vault-stellar.vercel.app](https://trust-vault-stellar.vercel.app) |
+| **Demo Video** | [Google Drive Link](https://drive.google.com/file/d/1y4tud_LFEaDoGERZd_c-4N8n2LLen3MQ/view?usp=drive_link) |
 | `escrow` Address | [`CBSC34HVESNUYHA44L7BPJFFCGJEVDIPW2LUI6UFST7NCOU7PCGJVCDB`](https://stellar.expert/explorer/testnet/contract/CBSC34HVESNUYHA44L7BPJFFCGJEVDIPW2LUI6UFST7NCOU7PCGJVCDB) |
 | `dispute` Address | [`CD6HNXUQ7OLA742HHYMXN5GEL2ZORLE7STV6UXQK6TCEB2K2ECC2EFN3`](https://stellar.expert/explorer/testnet/contract/CD6HNXUQ7OLA742HHYMXN5GEL2ZORLE7STV6UXQK6TCEB2K2ECC2EFN3) |
 | Admin Wallet | `GAU2K5F4X7F72LTSCFWBG6DEXKX3M6KCGFGPHVAH2ASDHN4OGUMM77JY` |
@@ -246,10 +247,10 @@ Signature elements:
 
 ## 📸 Screenshots & Walkthrough Video
 
-### 🎬 Walkthrough Video (1-2 mins)
-Watch the complete interactive walk-through showing connecting mock wallet, creating a multi-milestone escrow, completing/approving milestones, and raising a dispute.
+### 🎬 Walkthrough Video
+Watch the complete interactive walk-through showing connecting Freighter wallet, creating a multi-milestone escrow, completing/approving milestones, raising a dispute, and resolution.
 
-![dApp Video Walkthrough](assets/demo_walkthrough.webp)
+👉 **[Watch the Demo Video on Google Drive](https://drive.google.com/file/d/1y4tud_LFEaDoGERZd_c-4N8n2LLen3MQ/view?usp=drive_link)**
 
 ### 📱 Mobile Responsive UI
 Premium, fully responsive design and interactive components optimized for mobile and desktop screens:

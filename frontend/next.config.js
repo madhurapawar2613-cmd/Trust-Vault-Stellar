@@ -1,7 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  // Turbopack stub — silences the warning if Turbopack is ever enabled
   turbopack: {},
   webpack: (config) => {
     // Required for Stellar SDK Buffer usage in webpack mode
@@ -13,6 +12,14 @@ const nextConfig = {
       path: false,
       fs: false,
     }
+
+    // Ignore native Node.js addons in the client bundle
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      'sodium-native': false,
+      'require-addon': false,
+    }
+
     return config
   },
 }
