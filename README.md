@@ -1,7 +1,7 @@
 # TrustVault 🔐
 > **Decentralized, Milestone-Based Escrow with Integrated On-Chain Dispute Resolution on Stellar Soroban**
 
-TrustVault is a premium, production-grade decentralized escrow platform built on the Stellar Soroban smart contract platform. It provides a secure, trustless system for clients and freelancers to lock funds, track and release payments milestone-by-milestone, and raise disputes that are arbitrated by a dedicated mediator contract — completely transparently and on-chain.
+TrustVault is a production-grade decentralized escrow platform built on the Stellar Soroban smart contract platform. It provides a secure, trustless system for clients and freelancers to lock funds, track progress, release payments milestone-by-milestone, and arbitrate disputes via a dedicated mediator contract — completely transparently on-chain.
 
 ---
 
@@ -25,22 +25,18 @@ The TrustVault protocol is live on the Stellar Testnet. Below are the verified c
 
 TrustVault uses a modular, two-contract design pattern to separate concerns between core escrow accounting and dispute mediation. 
 
-```
-┌──────────┐                 Client Funds
-│  Client  ├───────────────────(Lock)────────────────────┐
-└────┬─────┘                                             ▼
-     │                                         ┌───────────────────┐
-     │                                         │                   │
-     ├───────────(Complete Milestone)─────────▶│  Escrow Contract  │
-     │                                         │                   │
-     │                                         └─────────┬─────────┘
-     │                                                   │
-     │                                             (Raise Dispute)
-     │                                                   │
-     ▼                                                   ▼
-┌──────────┐                                   ┌───────────────────┐
-│Freelancer│◀──────────(Release Funds)─────────┤ Dispute Contract  │
-└──────────┘                                   └───────────────────┘
+```mermaid
+graph TD
+    Client[Client Wallet] -- "1. Create Escrow & Lock Funds" --> Escrow[Escrow Smart Contract]
+    Freelancer[Freelancer Wallet] -- "2. Complete Milestone" --> Escrow
+    Client -- "3. Approve Milestone & Release" --> Escrow
+    Escrow -- "4. Payout" --> Freelancer
+
+    Client -- "5a. Raise Dispute" --> Escrow
+    Freelancer -- "5b. Raise Dispute" --> Escrow
+    Escrow -- "6. Inter-Contract Call" --> Dispute[Dispute Smart Contract]
+    Mediator[Mediator/Admin Wallet] -- "7. Resolve Dispute" --> Dispute
+    Dispute -- "8. Payout Winner" --> Escrow
 ```
 
 ### 1. Smart Contract Layer
@@ -54,31 +50,19 @@ TrustVault streams contract events dynamically in the frontend (polling the Stel
 
 ## 🛠️ Advanced Web3 Engineering & Bug Fix Log
 
-During rigorous testing and QA, several complex blockchain engineering hurdles were solved to make the platform production-ready:
+During testing and QA, several complex blockchain engineering hurdles were resolved to ensure production readiness:
 
-### ⚡ Single-Transaction Soroban Auth Tree (Bypassing `txBadAuth` errors)
-* **The Problem**: Initially, the escrow creation used a two-step transaction pattern: first sending a token `approve()` transaction, followed by `create_escrow()`. This caused sequence number collisions because both transactions were simulated simultaneously. Additionally, since the contract logic utilizes `token.transfer()` to move funds from the client directly to the contract (authorized by the client's signature), the `approve` pattern was redundant and caused authorization errors.
-* **The Solution**: Removed the `approve` step. Instead, we rely on Soroban's native `simulateTransaction` capability. The simulation automatically detects the nested `token.transfer` call within `create_escrow` and builds a complete, nested authorization tree. The frontend then calls `assembleTransaction` to embed these authorization details, enabling the client to sign and authorize the entire transaction (including token transfer) in a **single Freighter popup signature**.
-
-### 🔄 Real-Time Freighter Account Synchronization (Desync Fix)
-* **The Problem**: When users switched active accounts or networks inside the Freighter browser extension, the React application state remained desynchronized. This led to transactions being simulated with one public key but signed by another, resulting in `txBadAuth` (-6) validation errors.
-* **The Solution**: Integrated Freighter's `WatchWalletChanges` listener into the custom `useWallet` react hook. The app now listens to extension events in real time and automatically updates active public keys and builds new transactions cleanly under the correct active key.
-
-### 🩺 Safe Read-Only Simulation Fallbacks & Type Normalization
-* **The Problem**: Read-only operations (`getEscrow`, `getDispute`, `getEscrowCount`) were built using a 55-character simulation source address (`GAAZI...` - missing the final character), throwing silent `invalid encoded string` errors which caused the dashboard to render empty. Furthermore, `scValToNative` returns Soroban enums as arrays (e.g., `status: ["Active"]`) and large integers as strings, creating hydration mismatches on the client.
-* **The Solution**: Corrected the fallback address to the valid 56-character deployer key (`GAU2...`) and normalized parsed `ScVal` payloads into correct JS types (`BigInt`, `Number`, and flat `string` status variables) before they hit the state store.
-
-### 📦 Webpack Native Binary Exclusions (Client Bundle Fix)
-* **The Problem**: Loading `@stellar/stellar-sdk` on the client side crashed pages with `TypeError: Cannot read properties of undefined (reading 'call')` because Webpack attempted to bundle Node-native C++ addon dependencies (`sodium-native`, `require-addon`).
-* **The Solution**: Configured Webpack aliases in `next.config.js` to map `sodium-native` and `require-addon` to `false` in the browser bundle. Webpack replaces them with empty mocks, allowing the JS-fallback cryptos to function cleanly in the browser.
+* **Single-Transaction Soroban Auth (Fixing `txBadAuth`)**: Removed the redundant token `approve` step. The frontend now utilizes `assembleTransaction` to embed nested authorization trees (for the contract to call `token.transfer` on behalf of the client), permitting clients to authorize the entire creation and fund-locking flow in a **single Freighter signature**.
+* **Freighter Wallet Synchronization**: Integrated Freighter's `WatchWalletChanges` API inside a React listener hook. The client app now detects extension account swaps in real-time and synchronizes active keys to prevent transaction signature mismatches.
+* **Fallback Address Correction & Type Normalization**: Corrected the read-only fallback simulation account key to the valid 56-character deployer address (`GAU2...`) to resolve silent `invalid encoded string` errors. Normalized returned `ScVal` enums/bigints (converting arrays/strings like `status: ["Active"]` to flat types) to match React expectations.
+* **Webpack Browser Native Addon Mocks**: Configured `next.config.js` Webpack aliases to map Node-native dependencies (`sodium-native`, `require-addon`) to `false` in client bundles, allowing JS-fallback cryptos to function cleanly in the browser.
 
 ---
 
-## 📸 Screenshots
+## 📸 Screenshots & Artifacts
 
 ### 📱 Mobile Responsive UI
 Interactive components optimized for mobile viewports:
-
 ![Mobile Responsive Landing Page](assets/mobile_responsive_ui.png)
 
 ### 💻 Desktop Layouts & Interactive Escrow Lifecycle
@@ -93,8 +77,11 @@ A comprehensive tour of the user interface across various states of the applicat
 #### 3. Interactive Escrow Details (Milestones & Statuses)
 ![Interactive Escrow Details](assets/escrow_details.png)
 
-#### 4. Passing Rust & Frontend Test Suites
+#### 4. Passing Rust & Frontend Test Suites (35+ passing tests)
 ![Test Output](assets/test_output.png)
+
+#### 5. CI/CD Pipeline Running (Passing GitHub Actions)
+![CI/CD Pipeline](assets/cicd_pipeline.png)
 
 ---
 
@@ -155,6 +142,22 @@ The automated CI/CD pipeline runs on every push to `main` and `develop` branches
 2. **⚛️ Frontend Tests**: Runs type checks (`tsc --noEmit`), linter (`eslint`), runs Jest tests with coverage, and builds the production bundle.
 3. **🚀 Deploy**: Deploys to Vercel production hosting automatically upon merge.
 4. **🔐 Security Audit**: Checks Rust crates using `cargo-audit` (configured via `audit.toml` in repository root) and npm dependencies.
+
+---
+
+## 📝 Submission Checklist Validation
+
+- [x] **Public GitHub Repository** — [github.com/madhurapawar2613-cmd/Trust-Vault-Stellar](https://github.com/madhurapawar2613-cmd/Trust-Vault-Stellar)
+- [x] **README with Complete Documentation** — This detailed file.
+- [x] **Minimum 10+ Meaningful Commits** — Verified Git history.
+- [x] **Live Demo Link** — [trust-vault-stellar.vercel.app](https://trust-vault-stellar.vercel.app)
+- [x] **Contract Deployment Address** — `CBSC34HVESNUYHA44L7BPJFFCGJEVDIPW2LUI6UFST7NCOU7PCGJVCDB` (escrow), `CD6HNXUQ7OLA742HHYMXN5GEL2ZORLE7STV6UXQK6TCEB2K2ECC2EFN3` (dispute)
+- [x] **Transaction Hash for Contract Interaction** — Verified escrow creation transaction hash: [`9db3e6608462e0c96555369d55ecbb1dd4279f0f80c6f7622ac3f94fe647f0d`](https://stellar.expert/explorer/testnet/tx/9db3e6608462e0c96555369d55ecbb1dd4279f0f80c6f7622ac3f94fe647f0d)
+- [x] **Screenshots showing**:
+  - [x] **Mobile responsive UI** — `assets/mobile_responsive_ui.png`
+  - [x] **CI/CD pipeline running** — `assets/cicd_pipeline.png`
+  - [x] **Test output with 3+ passing tests** — `assets/test_output.png`
+- [x] **Demo Video Link (1-2 minutes)** — [Google Drive Link](https://drive.google.com/file/d/1R1LIgGm8YmpczZjsisChjlLoxjQZsD6l/view?usp=drive_link)
 
 ---
 
