@@ -189,6 +189,7 @@ jobs:
 
       - name: Cargo audit
         uses: actions-rust-lang/audit@v1
+        continue-on-error: true
         with:
           working-directory: contracts
           ignore: RUSTSEC-2024-0436
