@@ -14,7 +14,7 @@ import { useWallet } from '@/hooks/useWallet'
 import { useEscrowEvents } from '@/hooks/useEvents'
 import {
   completeMilestone, approveMilestone,
-  raiseDispute, cancelEscrow
+  raiseDispute, cancelEscrow, waitForConfirmation
 } from '@/lib/contracts'
 import {
   formatXLM, shortenAddress,
@@ -51,6 +51,8 @@ export default function EscrowDetail() {
     setLoadingMilestoneId(milestoneId)
     try {
       const hash = await completeMilestone({ freelancer: publicKey, escrowId, milestoneId, signTransaction })
+      addToast({ type: 'pending', title: 'Confirming…', message: 'Waiting for on-chain confirmation.', txHash: hash })
+      await waitForConfirmation(hash)
       addToast({ type: 'success', title: 'Milestone marked complete', message: 'Waiting for client approval.', txHash: hash })
       await refetch()
     } catch (e: unknown) {
@@ -65,6 +67,8 @@ export default function EscrowDetail() {
     setLoadingMilestoneId(milestoneId)
     try {
       const hash = await approveMilestone({ client: publicKey, escrowId, milestoneId, signTransaction })
+      addToast({ type: 'pending', title: 'Confirming…', message: 'Waiting for on-chain confirmation.', txHash: hash })
+      await waitForConfirmation(hash)
       addToast({ type: 'success', title: 'Milestone approved', message: 'Funds released to freelancer.', txHash: hash })
       await refetch()
     } catch (e: unknown) {
@@ -86,6 +90,8 @@ export default function EscrowDetail() {
     setCancelLoading(true)
     try {
       const hash = await cancelEscrow({ client: publicKey, escrowId, signTransaction })
+      addToast({ type: 'pending', title: 'Confirming…', message: 'Waiting for on-chain confirmation.', txHash: hash })
+      await waitForConfirmation(hash)
       addToast({ type: 'info', title: 'Escrow cancelled', message: 'Funds refunded to your wallet.', txHash: hash })
       await refetch()
     } catch (e: unknown) {

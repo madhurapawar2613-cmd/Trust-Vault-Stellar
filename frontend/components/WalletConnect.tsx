@@ -1,23 +1,53 @@
 'use client'
+import { useState } from 'react'
 import { useWallet } from '@/hooks/useWallet'
 import { Wallet, LogOut, Loader2 } from 'lucide-react'
+import { shortenAddress } from '@/lib/stellar'
 
 interface Props {
   large?: boolean
 }
 
 export function WalletConnect({ large }: Props) {
-  const { isConnected, loading, error, connect, connectDemoWallet, disconnect, freighterInstalled } = useWallet()
+  const { publicKey, isConnected, loading, error, connect, disconnect, freighterInstalled } = useWallet()
+  const [hovered, setHovered] = useState(false)
 
-  if (isConnected) {
+  if (isConnected && publicKey) {
     return (
       <button
         className="btn btn-outline"
         onClick={disconnect}
-        style={{ gap: '7px', fontSize: '0.8rem', padding: large ? '0.7rem 1.4rem' : '0.5rem 1rem' }}
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
+        style={{
+          gap: '8px',
+          fontSize: '0.8rem',
+          padding: large ? '0.7rem 1.4rem' : '0.5rem 1rem',
+          borderColor: hovered ? 'var(--accent-danger)' : 'var(--border)',
+          color: hovered ? 'var(--accent-danger)' : 'var(--text-secondary)',
+          background: hovered ? 'rgba(236,72,153,0.08)' : 'var(--bg-elevated)',
+          transition: 'all 0.25s ease',
+          width: large ? '180px' : '140px',
+          justifyContent: 'center',
+        }}
       >
-        <LogOut size={14} />
-        Disconnect
+        {hovered ? (
+          <>
+            <LogOut size={13} />
+            Disconnect
+          </>
+        ) : (
+          <>
+            <div style={{
+              width: '6px',
+              height: '6px',
+              borderRadius: '50%',
+              background: 'var(--accent-secondary)',
+              boxShadow: '0 0 8px var(--accent-secondary)'
+            }} />
+            {shortenAddress(publicKey, 4)}
+          </>
+        )}
       </button>
     )
   }
@@ -40,19 +70,6 @@ export function WalletConnect({ large }: Props) {
           <Wallet size={16} />
         )}
         {loading ? 'Connecting...' : 'Connect Freighter'}
-      </button>
-      <button
-        className="btn btn-outline"
-        onClick={connectDemoWallet}
-        style={{
-          fontSize: large ? '0.875rem' : '0.78rem',
-          padding: large ? '0.6rem 1.75rem' : '0.4rem 1rem',
-          gap: '8px',
-          borderColor: 'var(--accent-primary)',
-          color: 'var(--accent-primary)',
-        }}
-      >
-        Use Demo/Mock Wallet
       </button>
       {error && (
         <p style={{ fontSize: '0.78rem', color: 'var(--accent-danger)', maxWidth: '280px', textAlign: 'center' }}>

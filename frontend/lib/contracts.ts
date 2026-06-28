@@ -13,7 +13,7 @@ import {
 import type { EscrowData, MilestoneData } from './stellar'
 import { useTrustVaultStore } from './store'
 
-const server = new StellarSdk.SorobanRpc.Server(RPC_URL, { allowHttp: false })
+const server = new StellarSdk.SorobanRpc.Server(RPC_URL, { allowHttp: true })
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -66,11 +66,6 @@ async function signAndSubmit(
 // ── Read Functions ────────────────────────────────────────────────────────────
 
 export async function getEscrow(escrowId: number): Promise<EscrowData> {
-  if (useTrustVaultStore.getState().isDemoMode) {
-    const escrow = useTrustVaultStore.getState().escrows.find((e) => e.id === escrowId)
-    if (!escrow) throw new Error('Escrow not found')
-    return escrow
-  }
   const contract = escrowContract()
   const account = await server.getAccount(
     // Use a funded testnet account for read-only simulation
@@ -97,9 +92,6 @@ export async function getEscrow(escrowId: number): Promise<EscrowData> {
 }
 
 export async function getEscrowCount(): Promise<number> {
-  if (useTrustVaultStore.getState().isDemoMode) {
-    return useTrustVaultStore.getState().escrows.length
-  }
   const contract = escrowContract()
   const account = await server.getAccount(
     'GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWN'
@@ -149,41 +141,60 @@ export async function createEscrow(params: {
   tokenAddress: string
   milestones: Array<{ description: string; amount: string }>
   signTransaction: (xdr: string) => Promise<string>
+  onApproveStart?: () => void
+  onCreateStart?: () => void
 }): Promise<string> {
-  if (useTrustVaultStore.getState().isDemoMode) {
-    await new Promise((r) => setTimeout(r, 1500))
-    const id = useTrustVaultStore.getState().escrows.length + 1
-    const newEscrow: EscrowData = {
-      id,
-      client: params.client,
-      freelancer: params.freelancer,
-      token: params.tokenAddress,
-      total_amount: params.milestones.reduce((acc, m) => acc + BigInt(m.amount), 0n),
-      released_amount: 0n,
-      status: 'Active',
-      dispute_contract: DISPUTE_CONTRACT_ID,
-      created_at: Math.floor(Date.now() / 1000),
-      milestones: params.milestones.map((m, i) => ({
-        id: i,
-        description: m.description,
-        amount: BigInt(m.amount),
-        completed: false,
-        approved: false,
-      })),
-    }
-    useTrustVaultStore.getState().upsertEscrow(newEscrow)
-    return '153f47e16517a70b5508ef1e7cf644b22a33e1e976ae7330887d6d289e5c9fb0'
-  }
   const contract = escrowContract()
 
-  const milestonesScVal = StellarSdk.nativeToScVal(
-    params.milestones.map((m, i) => ({
-      id: i,
-      description: m.description,
-      amount: BigInt(m.amount),
-      completed: false,
-      approved: false,
-    }))
+  // Calculate total amount for token approval
+  const totalAmount = params.milestones.reduce((sum, m) => sum + BigInt(m.amount), 0n)
+
+  // ── Step 1: Approve token transfer ──────────────────────────────────────
+  // The escrow contract calls token.transfer() from the client, which requires
+  // the client to have pre-approved the escrow contract as a spender.
+  params.onApproveStart?.()
+  const tokenContract = new StellarSdk.Contract(params.tokenAddress)
+  // Ledger expiry: ~7 days at 5s/ledger = 120,960 ledgers
+  const expireLedger = (await server.getLatestLedger()).sequence + 120_960
+  const approveOp = tokenContract.call(
+    'approve',
+    StellarSdk.nativeToScVal(params.client, { type: 'address' }),
+    StellarSdk.nativeToScVal(ESCROW_CONTRACT_ID, { type: 'address' }),
+    StellarSdk.nativeToScVal(totalAmount, { type: 'i128' }),
+    StellarSdk.nativeToScVal(expireLedger, { type: 'u32' }),
+  )
+  const { tx: approveTx, simResult: approveSim } = await buildAndSimulate(params.client, approveOp)
+  await signAndSubmit(approveTx, approveSim, params.signTransaction)
+
+  // ── Step 2: Create the escrow ────────────────────────────────────────────
+  params.onCreateStart?.()
+  const milestonesScVal = StellarSdk.xdr.ScVal.scvVec(
+    params.milestones.map((m, i) => {
+      // Struct fields must be sorted alphabetically for Soroban serialization:
+      // amount, approved, completed, description, id
+      return StellarSdk.xdr.ScVal.scvMap([
+        new StellarSdk.xdr.ScMapEntry({
+          key: StellarSdk.nativeToScVal('amount', { type: 'symbol' }),
+          val: StellarSdk.nativeToScVal(BigInt(m.amount), { type: 'i128' }),
+        }),
+        new StellarSdk.xdr.ScMapEntry({
+          key: StellarSdk.nativeToScVal('approved', { type: 'symbol' }),
+          val: StellarSdk.nativeToScVal(false, { type: 'bool' }),
+        }),
+        new StellarSdk.xdr.ScMapEntry({
+          key: StellarSdk.nativeToScVal('completed', { type: 'symbol' }),
+          val: StellarSdk.nativeToScVal(false, { type: 'bool' }),
+        }),
+        new StellarSdk.xdr.ScMapEntry({
+          key: StellarSdk.nativeToScVal('description', { type: 'symbol' }),
+          val: StellarSdk.nativeToScVal(m.description, { type: 'string' }),
+        }),
+        new StellarSdk.xdr.ScMapEntry({
+          key: StellarSdk.nativeToScVal('id', { type: 'symbol' }),
+          val: StellarSdk.nativeToScVal(i, { type: 'u32' }),
+        }),
+      ])
+    })
   )
 
   const op = contract.call(
@@ -204,21 +215,6 @@ export async function completeMilestone(params: {
   milestoneId: number
   signTransaction: (xdr: string) => Promise<string>
 }): Promise<string> {
-  if (useTrustVaultStore.getState().isDemoMode) {
-    await new Promise((r) => setTimeout(r, 1500))
-    const escrows = useTrustVaultStore.getState().escrows
-    const escrow = escrows.find((e) => e.id === params.escrowId)
-    if (!escrow) throw new Error('Escrow not found')
-    const updatedMilestones = escrow.milestones.map((m) =>
-      m.id === params.milestoneId ? { ...m, completed: true } : m
-    )
-    const updatedEscrow = {
-      ...escrow,
-      milestones: updatedMilestones,
-    }
-    useTrustVaultStore.getState().upsertEscrow(updatedEscrow)
-    return 'c797a61102168190175e339507c0e11167ac77f27fea7a6cc6aac6b55ae69350'
-  }
   const contract = escrowContract()
   const op = contract.call(
     'complete_milestone',
@@ -236,31 +232,6 @@ export async function approveMilestone(params: {
   milestoneId: number
   signTransaction: (xdr: string) => Promise<string>
 }): Promise<string> {
-  if (useTrustVaultStore.getState().isDemoMode) {
-    await new Promise((r) => setTimeout(r, 1500))
-    const escrows = useTrustVaultStore.getState().escrows
-    const escrow = escrows.find((e) => e.id === params.escrowId)
-    if (!escrow) throw new Error('Escrow not found')
-    const milestone = escrow.milestones.find((m) => m.id === params.milestoneId)
-    if (!milestone) throw new Error('Milestone not found')
-    
-    const updatedMilestones = escrow.milestones.map((m) =>
-      m.id === params.milestoneId ? { ...m, approved: true } : m
-    )
-    
-    const released_amount = escrow.released_amount + milestone.amount
-    const allApproved = updatedMilestones.every((m) => m.approved)
-    const status = allApproved ? ('Completed' as const) : escrow.status
-
-    const updatedEscrow = {
-      ...escrow,
-      released_amount,
-      status,
-      milestones: updatedMilestones,
-    }
-    useTrustVaultStore.getState().upsertEscrow(updatedEscrow)
-    return 'd480c266828d9cf0be19f1740ddd2f34d95a82639f6b446b6d03499dd9e41601'
-  }
   const contract = escrowContract()
   const op = contract.call(
     'approve_milestone',
@@ -278,18 +249,6 @@ export async function raiseDispute(params: {
   reason: string
   signTransaction: (xdr: string) => Promise<string>
 }): Promise<string> {
-  if (useTrustVaultStore.getState().isDemoMode) {
-    await new Promise((r) => setTimeout(r, 1500))
-    const escrows = useTrustVaultStore.getState().escrows
-    const escrow = escrows.find((e) => e.id === params.escrowId)
-    if (!escrow) throw new Error('Escrow not found')
-    const updatedEscrow = {
-      ...escrow,
-      status: 'Disputed' as const,
-    }
-    useTrustVaultStore.getState().upsertEscrow(updatedEscrow)
-    return '88fa542a9e0e8e58767005fb047a3289b1238e0da629de0f6de81b16d4a6f89e'
-  }
   const contract = escrowContract()
   const op = contract.call(
     'raise_dispute',
@@ -306,18 +265,6 @@ export async function cancelEscrow(params: {
   escrowId: number
   signTransaction: (xdr: string) => Promise<string>
 }): Promise<string> {
-  if (useTrustVaultStore.getState().isDemoMode) {
-    await new Promise((r) => setTimeout(r, 1500))
-    const escrows = useTrustVaultStore.getState().escrows
-    const escrow = escrows.find((e) => e.id === params.escrowId)
-    if (!escrow) throw new Error('Escrow not found')
-    const updatedEscrow = {
-      ...escrow,
-      status: 'Cancelled' as const,
-    }
-    useTrustVaultStore.getState().upsertEscrow(updatedEscrow)
-    return '88fa542a9e0e8e58767005fb047a3289b1238e0da629de0f6de81b16d4a6f89e'
-  }
   const contract = escrowContract()
   const op = contract.call(
     'cancel_escrow',
@@ -326,6 +273,41 @@ export async function cancelEscrow(params: {
   )
   const { tx, simResult } = await buildAndSimulate(params.client, op)
   return signAndSubmit(tx, simResult, params.signTransaction)
+}
+
+// ── Dispute Resolution (Mediator) ─────────────────────────────────────────────
+
+export async function resolveDispute(params: {
+  admin: string
+  escrowId: number
+  winner: 'client' | 'freelancer'
+  signTransaction: (xdr: string) => Promise<string>
+}): Promise<string> {
+  const contract = disputeContract()
+  const winnerVariant = params.winner === 'client' ? 'ResolvedForClient' : 'ResolvedForFreelancer'
+  const op = contract.call(
+    'resolve_dispute',
+    StellarSdk.nativeToScVal(params.admin, { type: 'address' }),
+    StellarSdk.nativeToScVal(params.escrowId, { type: 'u32' }),
+    StellarSdk.xdr.ScVal.scvVec([
+      StellarSdk.nativeToScVal(winnerVariant, { type: 'symbol' }),
+    ]),
+  )
+  const { tx, simResult } = await buildAndSimulate(params.admin, op)
+  return signAndSubmit(tx, simResult, params.signTransaction)
+}
+
+/** Poll for transaction finality — resolves when tx is confirmed on-chain */
+export async function waitForConfirmation(hash: string, maxAttempts = 20): Promise<boolean> {
+  for (let i = 0; i < maxAttempts; i++) {
+    try {
+      const result = await server.getTransaction(hash)
+      if (result.status === 'SUCCESS') return true
+      if (result.status === 'FAILED') return false
+    } catch { /* not yet indexed */ }
+    await new Promise((r) => setTimeout(r, 2000))
+  }
+  return false
 }
 
 // ── Event Streaming (polling) ─────────────────────────────────────────────────

@@ -1,15 +1,200 @@
 'use client'
-import { motion } from 'framer-motion'
-import { AlertTriangle, CheckCircle, Clock, User, ExternalLink } from 'lucide-react'
+import { useState } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { AlertTriangle, CheckCircle, Clock, User, ExternalLink, Gavel, X, Loader2, ArrowRight } from 'lucide-react'
 import Link from 'next/link'
 import { useWallet } from '@/hooks/useWallet'
 import { useEscrows } from '@/hooks/useEscrow'
-import { shortenAddress, DISPUTE_STATUS_CONFIG, explorerContractUrl } from '@/lib/stellar'
+import { shortenAddress, explorerContractUrl } from '@/lib/stellar'
 import { ESCROW_CONTRACT_ID } from '@/lib/config'
+import { resolveDispute } from '@/lib/contracts'
+import { useTrustVaultStore } from '@/lib/store'
 
+// ── Resolve Modal ─────────────────────────────────────────────────────────────
+function ResolveModal({
+  escrowId,
+  clientAddress,
+  freelancerAddress,
+  onClose,
+  onResolved,
+}: {
+  escrowId: number
+  clientAddress: string
+  freelancerAddress: string
+  onClose: () => void
+  onResolved: () => void
+}) {
+  const { publicKey, signTransaction } = useWallet()
+  const { addToast } = useTrustVaultStore()
+  const [winner, setWinner] = useState<'client' | 'freelancer' | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  async function handleResolve() {
+    if (!winner || !publicKey || !signTransaction) return
+    setLoading(true)
+    setError(null)
+    try {
+      const hash = await resolveDispute({
+        admin: publicKey,
+        escrowId,
+        winner,
+        signTransaction,
+      })
+      addToast({
+        type: 'success',
+        title: 'Dispute Resolved',
+        message: `Resolved in favour of ${winner}. Funds distributed.`,
+        txHash: hash,
+      })
+      onResolved()
+      onClose()
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Failed to resolve dispute')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <motion.div
+        className="modal-content"
+        initial={{ opacity: 0, scale: 0.94, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.94, y: 20 }}
+        transition={{ duration: 0.2 }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div style={{
+              width: '36px', height: '36px',
+              background: 'rgba(99,102,241,0.12)',
+              borderRadius: '10px',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              <Gavel size={18} style={{ color: 'var(--accent-primary)' }} />
+            </div>
+            <div>
+              <h3 style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '1rem' }}>
+                Resolve Dispute
+              </h3>
+              <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+                Escrow #{escrowId}
+              </p>
+            </div>
+          </div>
+          <button className="btn-ghost" onClick={onClose} style={{ padding: '6px' }}>
+            <X size={18} />
+          </button>
+        </div>
+
+        <div className="divider" />
+
+        {/* Warning */}
+        <div style={{
+          background: 'rgba(99,102,241,0.06)',
+          border: '1px solid rgba(99,102,241,0.2)',
+          borderRadius: 'var(--radius-md)',
+          padding: '12px 14px',
+          marginBottom: '1.25rem',
+        }}>
+          <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+            ⚖️ As mediator, select the winning party. Funds will be distributed on-chain immediately. This action is <strong style={{ color: 'var(--text-primary)' }}>irreversible</strong>.
+          </p>
+        </div>
+
+        {/* Party selector */}
+        <p style={{ fontFamily: 'var(--font-display)', fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '10px' }}>
+          Select winning party
+        </p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '1.5rem' }}>
+          {[
+            { key: 'client' as const, label: 'Client', addr: clientAddress },
+            { key: 'freelancer' as const, label: 'Freelancer', addr: freelancerAddress },
+          ].map((p) => (
+            <button
+              key={p.key}
+              onClick={() => setWinner(p.key)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '14px 16px',
+                borderRadius: 'var(--radius-md)',
+                border: `2px solid ${winner === p.key ? 'var(--accent-primary)' : 'var(--border)'}`,
+                background: winner === p.key ? 'rgba(99,102,241,0.08)' : 'var(--bg-elevated)',
+                cursor: 'pointer',
+                transition: 'all 0.15s ease',
+                textAlign: 'left',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{
+                  width: '32px', height: '32px',
+                  borderRadius: '50%',
+                  background: winner === p.key ? 'rgba(99,102,241,0.2)' : 'var(--bg-surface)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  border: `1px solid ${winner === p.key ? 'var(--accent-primary)' : 'var(--border)'}`,
+                }}>
+                  <User size={14} style={{ color: winner === p.key ? 'var(--accent-primary)' : 'var(--text-muted)' }} />
+                </div>
+                <div>
+                  <p style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: '0.875rem', color: winner === p.key ? 'var(--text-primary)' : 'var(--text-secondary)' }}>
+                    {p.label}
+                  </p>
+                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.68rem', color: 'var(--text-muted)' }}>
+                    {shortenAddress(p.addr, 6)}
+                  </span>
+                </div>
+              </div>
+              {winner === p.key && (
+                <div style={{
+                  width: '20px', height: '20px',
+                  borderRadius: '50%',
+                  background: 'var(--accent-primary)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                  <CheckCircle size={13} style={{ color: '#fff' }} />
+                </div>
+              )}
+            </button>
+          ))}
+        </div>
+
+        {error && (
+          <p style={{ fontSize: '0.78rem', color: 'var(--accent-danger)', marginBottom: '1rem' }}>{error}</p>
+        )}
+
+        <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+          <button type="button" className="btn btn-ghost" onClick={onClose} disabled={loading}>
+            Cancel
+          </button>
+          <button
+            className="btn btn-primary"
+            disabled={!winner || loading}
+            onClick={handleResolve}
+            style={{ gap: '8px' }}
+          >
+            {loading ? (
+              <><Loader2 size={15} style={{ animation: 'spin 1s linear infinite' }} /> Resolving…</>
+            ) : (
+              <><Gavel size={15} /> Resolve Dispute</>
+            )}
+          </button>
+        </div>
+      </motion.div>
+    </div>
+  )
+}
+
+// ── Main Disputes Page ────────────────────────────────────────────────────────
 export default function DisputesPage() {
   const { publicKey, isConnected } = useWallet()
-  const { escrows, loading } = useEscrows(publicKey)
+  const { escrows, loading, refetch } = useEscrows(publicKey)
+  const [resolveTarget, setResolveTarget] = useState<{ id: number; client: string; freelancer: string } | null>(null)
 
   const disputed = escrows.filter((e) => e.status === 'Disputed')
 
@@ -42,7 +227,7 @@ export default function DisputesPage() {
       ) : loading ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           {[1, 2].map((i) => (
-            <div key={i} className="skeleton" style={{ height: '120px', borderRadius: '16px' }} />
+            <div key={i} className="skeleton" style={{ height: '140px', borderRadius: '16px' }} />
           ))}
         </div>
       ) : disputed.length === 0 ? (
@@ -116,7 +301,7 @@ export default function DisputesPage() {
                     </div>
                   </div>
 
-                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
                     <a
                       href={explorerContractUrl(ESCROW_CONTRACT_ID)}
                       target="_blank"
@@ -125,9 +310,17 @@ export default function DisputesPage() {
                     >
                       <ExternalLink size={14} />
                     </a>
+                    {/* Mediator: Resolve button */}
+                    <button
+                      className="btn btn-outline"
+                      style={{ fontSize: '0.8rem', padding: '6px 14px', gap: '6px', borderColor: 'rgba(99,102,241,0.4)', color: 'var(--accent-primary)' }}
+                      onClick={() => setResolveTarget({ id: escrow.id, client: escrow.client, freelancer: escrow.freelancer })}
+                    >
+                      <Gavel size={13} /> Resolve
+                    </button>
                     <Link href={`/escrow/${escrow.id}`} style={{ textDecoration: 'none' }}>
-                      <button className="btn btn-outline" style={{ fontSize: '0.8rem', padding: '6px 14px' }}>
-                        View Details
+                      <button className="btn btn-outline" style={{ fontSize: '0.8rem', padding: '6px 14px', gap: '6px' }}>
+                        View Details <ArrowRight size={13} />
                       </button>
                     </Link>
                   </div>
@@ -152,10 +345,23 @@ export default function DisputesPage() {
         <ol style={{ paddingLeft: '1.25rem', color: 'var(--text-secondary)', fontSize: '0.825rem', lineHeight: 1.75 }}>
           <li>Either party raises a dispute — escrow is frozen immediately.</li>
           <li>The Dispute Resolver contract records the claim on-chain.</li>
-          <li>A designated mediator reviews evidence off-chain and resolves the dispute.</li>
+          <li>A designated mediator reviews evidence off-chain and clicks <strong style={{ color: 'var(--text-primary)' }}>Resolve</strong>.</li>
           <li>Resolution is recorded on-chain and funds are distributed accordingly.</li>
         </ol>
       </motion.div>
+
+      {/* Resolve Modal */}
+      <AnimatePresence>
+        {resolveTarget && (
+          <ResolveModal
+            escrowId={resolveTarget.id}
+            clientAddress={resolveTarget.client}
+            freelancerAddress={resolveTarget.freelancer}
+            onClose={() => setResolveTarget(null)}
+            onResolved={refetch}
+          />
+        )}
+      </AnimatePresence>
     </div>
   )
 }

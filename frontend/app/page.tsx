@@ -1,7 +1,7 @@
 'use client'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
-import { Plus, Shield, Zap, Lock, ArrowRight } from 'lucide-react'
+import { Plus, Shield, Zap, Lock, ArrowRight, RefreshCw, Loader2 } from 'lucide-react'
 import { EscrowCard } from '@/components/EscrowCard'
 import { WalletConnect } from '@/components/WalletConnect'
 import { StatsBar } from '@/components/StatsBar'
@@ -28,7 +28,7 @@ const FEATURES = [
 
 export default function Dashboard() {
   const { publicKey, isConnected } = useWallet()
-  const { escrows, loading } = useEscrows(publicKey)
+  const { escrows, loading, refetch } = useEscrows(publicKey)
 
   const stats = {
     total: escrows.length,
@@ -213,11 +213,22 @@ export default function Dashboard() {
             <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.15rem', fontWeight: 600 }}>
               Your Escrows
             </h2>
-            <Link href="/create" style={{ textDecoration: 'none' }}>
-              <button className="btn btn-primary">
-                <Plus size={15} /> New Escrow
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button 
+                className="btn btn-outline" 
+                onClick={refetch} 
+                disabled={loading}
+                style={{ padding: '0.5rem 1rem', fontSize: '0.875rem', gap: '6px' }}
+              >
+                {loading ? <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> : <RefreshCw size={14} />} 
+                Refresh
               </button>
-            </Link>
+              <Link href="/create" style={{ textDecoration: 'none' }}>
+                <button className="btn btn-primary" style={{ padding: '0.5rem 1rem', fontSize: '0.875rem' }}>
+                  <Plus size={15} /> New Escrow
+                </button>
+              </Link>
+            </div>
           </div>
 
           {/* Cards */}

@@ -335,7 +335,7 @@ textarea.input { resize: vertical; min-height: 80px; }
 }
 
 /* ── Mobile ──────────────────────────────────────────────────────────────────── */
-@media (max-width: 640px) {
+@media (max-width: 900px) {
   .hide-mobile { display: none !important; }
   .show-mobile { display: inline-flex !important; }
   .stack-mobile { flex-direction: column !important; }

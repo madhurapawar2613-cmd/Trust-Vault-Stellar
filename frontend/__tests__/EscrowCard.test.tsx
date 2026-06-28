@@ -35,7 +35,7 @@ const mockEscrow: EscrowData = {
   id: 1,
   client: CLIENT_KEY,
   freelancer: FREELANCER_KEY,
-  token: 'CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYC',
+  token: 'CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC',
   total_amount: 10_000_000_0n, // 10 XLM in stroops
   released_amount: 5_000_000_0n,
   status: 'Active',

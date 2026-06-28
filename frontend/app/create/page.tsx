@@ -24,6 +24,7 @@ export default function CreateEscrow() {
 
   const [step, setStep] = useState<Step>(1)
   const [loading, setLoading] = useState(false)
+  const [loadingStep, setLoadingStep] = useState<'approving' | 'creating' | null>(null)
   const [txHash, setTxHash] = useState<string | null>(null)
 
   // Form state
@@ -76,7 +77,11 @@ export default function CreateEscrow() {
   async function handleSubmit() {
     if (!publicKey || !signTransaction) return
     setLoading(true)
+    setLoadingStep('approving')
     try {
+      addToast({ type: 'pending', title: 'Step 1 of 2', message: 'Approving token transfer — sign in Freighter…' })
+      // Small delay so user can read the toast before Freighter opens
+      await new Promise((r) => setTimeout(r, 600))
       const hash = await createEscrow({
         client: publicKey,
         freelancer,
@@ -86,6 +91,13 @@ export default function CreateEscrow() {
           amount: xlmToStroops(parseFloat(m.amount)).toString(),
         })),
         signTransaction,
+        onApproveStart: () => {
+          setLoadingStep('approving')
+        },
+        onCreateStart: () => {
+          setLoadingStep('creating')
+          addToast({ type: 'pending', title: 'Step 2 of 2', message: 'Creating escrow — sign in Freighter…' })
+        },
       })
       setTxHash(hash)
       setPendingTx(hash)
@@ -96,6 +108,7 @@ export default function CreateEscrow() {
       addToast({ type: 'error', title: 'Failed to create escrow', message: msg })
     } finally {
       setLoading(false)
+      setLoadingStep(null)
     }
   }
 
@@ -311,7 +324,10 @@ export default function CreateEscrow() {
                 disabled={!validateStep2() || loading}
               >
                 {loading ? (
-                  <><Loader2 size={15} style={{ animation: 'spin 1s linear infinite' }} /> Creating Escrow...</>
+                  <>
+                    <Loader2 size={15} style={{ animation: 'spin 1s linear infinite' }} />
+                    {loadingStep === 'approving' ? 'Approving Token…' : 'Creating Escrow…'}
+                  </>
                 ) : (
                   <><Lock size={15} /> Lock Funds & Create</>
                 )}

@@ -10,7 +10,6 @@ import { shortenAddress } from '@/lib/stellar'
 
 const NAV_LINKS = [
   { href: '/', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/create', label: 'New Escrow', icon: PlusCircle },
   { href: '/disputes', label: 'Disputes', icon: AlertTriangle },
 ]
 
@@ -55,7 +54,7 @@ export function Navbar() {
 
         {/* Desktop nav */}
         {isConnected && (
-          <div className="hide-mobile" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+          <div className="hide-mobile" style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
             {NAV_LINKS.map((link) => {
               const active = pathname === link.href
               return (
@@ -98,21 +97,18 @@ export function Navbar() {
         )}
 
         {/* Right side */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          {isConnected && publicKey && (
-            <div className="hide-mobile address" style={{ fontSize: '0.7rem' }}>
-              {shortenAddress(publicKey, 5)}
-            </div>
-          )}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
           <WalletConnect />
           {/* Mobile hamburger */}
-          <button
-            className="btn-ghost show-mobile"
-            onClick={() => setMobileOpen(!mobileOpen)}
-            aria-label="Toggle menu"
-          >
-            {mobileOpen ? <X size={20} /> : <Menu size={20} />}
-          </button>
+          {isConnected && (
+            <button
+              className="btn-ghost show-mobile"
+              onClick={() => setMobileOpen(!mobileOpen)}
+              aria-label="Toggle menu"
+            >
+              {mobileOpen ? <X size={20} /> : <Menu size={20} />}
+            </button>
+          )}
         </div>
       </nav>
 

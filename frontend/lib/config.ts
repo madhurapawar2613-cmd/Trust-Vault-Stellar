@@ -18,7 +18,7 @@ export const DISPUTE_CONTRACT_ID =
 // Native XLM token address on testnet
 export const NATIVE_TOKEN =
   process.env.NEXT_PUBLIC_NATIVE_TOKEN ??
-  'CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYC'
+  'CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC'
 
 // UI
 export const EXPLORER_URL = 'https://stellar.expert/explorer/testnet'

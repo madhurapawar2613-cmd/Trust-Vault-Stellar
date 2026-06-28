@@ -256,6 +256,12 @@ Premium, fully responsive design and interactive components optimized for mobile
 
 ![Mobile Responsive UI](assets/mobile_responsive_ui.png)
 
+### 🔐 Interactive Escrow Lifecycle
+Visual walkthrough of creating a multi-milestone escrow and raising an active dispute:
+
+![Escrow Created Success](assets/escrow_created_success.png)
+![Dispute Raised Details](assets/dispute_raised_success.png)
+
 ### 🧪 Passing Test Suites
 35 passing test cases across Rust smart contracts (Soroban SDK test utilities) and frontend React components (Jest & React Testing Library):
 
