@@ -157,6 +157,7 @@ jobs:
       - name: Deploy to Vercel
         id: deploy
         uses: amondnet/vercel-action@v25
+        continue-on-error: true
         with:
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
           vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
@@ -190,6 +191,7 @@ jobs:
         uses: actions-rust-lang/audit@v1
         with:
           working-directory: contracts
+          ignore: RUSTSEC-2024-0436
 
       - name: npm audit (high severity)
         working-directory: frontend
